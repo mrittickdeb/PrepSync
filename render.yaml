@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: prepsync-api
+    env: node
+    rootDir: .
+    buildCommand: npm install -g pnpm && pnpm install && pnpm run build:api
+    startCommand: pnpm --filter api start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Add the rest of your environment variables here in the Render Dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false

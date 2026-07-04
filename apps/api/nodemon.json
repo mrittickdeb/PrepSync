@@ -2,5 +2,8 @@
   "watch": ["src"],
   "ext": "ts,json",
   "ignore": ["dist"],
-  "exec": "ts-node --transpile-only src/index.ts"
+  "exec": "ts-node --transpile-only src/index.ts",
+  "env": {
+    "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+  }
 }
