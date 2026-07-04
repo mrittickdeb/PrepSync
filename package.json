@@ -8,7 +8,7 @@
     "dev:api": "pnpm --filter api dev",
     "build": "pnpm --filter shared build && pnpm --parallel --filter web --filter api build",
     "build:web": "pnpm --filter web build",
-    "build:api": "pnpm --filter api build",
+    "build:api": "pnpm --filter shared build && pnpm --filter api build",
     "lint": "pnpm --parallel --filter web --filter api lint",
     "clean": "pnpm --parallel -r exec rm -rf node_modules dist"
   },
