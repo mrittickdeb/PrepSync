@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ScoreRing, Button, Badge, Spinner } from '@/components/ui';
 import { PageWrapper } from '@/components/layout';
 import type { Domain, Difficulty } from '@prepsync/shared';
-import { DOMAIN_LABELS, DIFFICULTY_LABELS } from '@prepsync/shared';
+import { DIFFICULTY_LABELS } from '@prepsync/shared';
 import api from '@/services/api';
 
 interface EvaluationReport {

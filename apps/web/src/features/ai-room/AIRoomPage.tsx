@@ -224,7 +224,7 @@ export default function AIRoomPage() {
             </div>
           </div>
 
-          <Button variant="danger" size="sm" onClick={handleEndSession} loading={ending}>
+          <Button variant="danger" size="sm" onClick={handleEndSession} isLoading={ending}>
             End Session
           </Button>
         </div>
@@ -339,7 +339,7 @@ export default function AIRoomPage() {
             )}
 
             <div className="flex justify-end mt-2">
-              <Button size="sm" onClick={handleSend} loading={sending} disabled={!(activeTab === 'code' ? codeValue : inputValue).trim()}>
+              <Button size="sm" onClick={handleSend} isLoading={sending} disabled={!(activeTab === 'code' ? codeValue : inputValue).trim()}>
                 Send
               </Button>
             </div>

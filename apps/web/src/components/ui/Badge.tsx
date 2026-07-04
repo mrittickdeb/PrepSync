@@ -2,7 +2,7 @@ import { type HTMLAttributes } from 'react';
 import { clsx } from 'clsx';
 import type { Domain } from '@prepsync/shared';
 
-type BadgeVariant = 'domain' | 'status';
+export type BadgeVariant = 'domain' | 'status';
 type StatusType = 'active' | 'completed' | 'abandoned' | 'waiting' | 'ended';
 
 interface DomainBadgeProps extends HTMLAttributes<HTMLSpanElement> {

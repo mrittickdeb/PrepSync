@@ -149,7 +149,7 @@ export default function SessionConfigModal({ isOpen, onClose }: SessionConfigMod
           <Button variant="ghost" onClick={onClose} className="flex-1">
             Cancel
           </Button>
-          <Button onClick={handleStart} loading={loading} className="flex-1">
+          <Button onClick={handleStart} isLoading={loading} className="flex-1">
             Start Interview
           </Button>
         </div>
