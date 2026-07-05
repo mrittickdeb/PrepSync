@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageWrapper } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { clsx } from 'clsx';
-import { listSessions } from '@/services/session.service';
+import { listSessions, endSession } from '@/services/session.service';
 
 const DOMAIN_LABELS: Record<string, string> = {
   dsa: 'DSA',
@@ -166,6 +166,23 @@ export default function SessionHistoryPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
+                    {s.type === 'ai' && s.status === 'active' && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/ai-room/${s._id}`);
+                        }}>Resume</Button>
+                        <Button size="sm" variant="danger" onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await endSession(s._id);
+                            fetchSessions();
+                          } catch {
+                            // ignore
+                          }
+                        }}>End</Button>
+                      </div>
+                    )}
                     {s.type === 'ai' && s.evaluationReport && (
                       <Button size="sm" variant="ghost">View Report</Button>
                     )}
