@@ -39,6 +39,7 @@ interface AuthState {
   verifyEmail: (userId: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  fetchUser: () => Promise<void>;
   completeOnboarding: (goal: string, targetDomains: string[], weeklyGoal: number) => Promise<void>;
 }
 
@@ -111,6 +112,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     })();
 
     return refreshPromise;
+  },
+
+  fetchUser: async () => {
+    try {
+      set({ isLoading: true });
+      const user = await authService.getMe();
+      set({
+        user: user as unknown as User,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      throw new Error('Failed to fetch user profile');
+    }
   },
 
   completeOnboarding: async (goal, targetDomains, weeklyGoal) => {

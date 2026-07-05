@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
-  const refreshAuth = useAuthStore((s) => s.refreshAuth);
+  const fetchUser = useAuthStore((s) => s.fetchUser);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -14,7 +14,7 @@ export default function AuthCallbackPage() {
 
     if (token) {
       setAccessToken(token);
-      refreshAuth()
+      fetchUser()
         .then(() => {
           const redirect = localStorage.getItem('authRedirect');
           if (redirect) localStorage.removeItem('authRedirect');
@@ -26,7 +26,7 @@ export default function AuthCallbackPage() {
     } else {
       navigate('/login', { replace: true });
     }
-  }, [navigate, refreshAuth]);
+  }, [navigate, fetchUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-base">
