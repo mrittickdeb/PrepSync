@@ -21,6 +21,7 @@ import {
   formatFileSize,
   FILE_ACCEPT,
 } from '@/services/upload.service';
+import { createDMThread } from '@/services/dm.service';
 import { useAuthStore } from '@/stores/authStore';
 import StudyLounge from './StudyLounge';
 import GroupCall from './GroupCall';
@@ -577,7 +578,20 @@ export default function DomainGroupsPage() {
                       )}
                       <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
                         <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
-                          <span className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me')}>
+                          <span
+                            className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me', !isMe && 'cursor-pointer hover:underline')}
+                            title={!isMe ? `DM ${msg.userId?.name}` : undefined}
+                            onClick={async (e) => {
+                              if (isMe || !msg.userId?._id) return;
+                              e.stopPropagation();
+                              try {
+                                const { threadId } = await createDMThread(msg.userId._id);
+                                navigate(`/dms/${threadId}`);
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                          >
                             {isMe ? 'You' : (msg.userId?.name || 'Unknown')}
                           </span>
                           <span className="dgp-msg-time">
