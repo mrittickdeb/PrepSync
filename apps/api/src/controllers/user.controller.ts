@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { ApiError } from '../middleware/error';
 import Session from '../models/Session';
 
@@ -66,8 +67,15 @@ export async function getActivity(
     const oneYearAgo = new Date();
     oneYearAgo.setDate(oneYearAgo.getDate() - 365);
 
+    const userObjId = new mongoose.Types.ObjectId(String((user as any)._id));
+
     const activity = await Session.aggregate([
-      { $match: { userId: (user as any)._id, startedAt: { $gte: oneYearAgo } } },
+      { 
+        $match: { 
+          $or: [{ userId: userObjId }, { peerId: userObjId }],
+          startedAt: { $gte: oneYearAgo } 
+        } 
+      },
       { 
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$startedAt" } },

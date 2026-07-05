@@ -39,8 +39,12 @@ export default function ActivityHeatmap({ data = {}, weeks = 52 }: ActivityHeatm
       for (let d = 0; d < 7; d++) {
         const current = new Date(startDate);
         current.setDate(current.getDate() + w * 7 + d);
-        const dateStr = current.toISOString().split('T')[0];
-        const count = data[dateStr] || 0;
+        const yyyy = current.getFullYear();
+        const mm = String(current.getMonth() + 1).padStart(2, '0');
+        const dd = String(current.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const utcDateStr = current.toISOString().split('T')[0];
+        const count = data[dateStr] || data[utcDateStr] || 0;
 
         if (current <= today) {
           total += count;
