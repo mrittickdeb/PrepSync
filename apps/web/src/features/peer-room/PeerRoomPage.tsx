@@ -139,7 +139,8 @@ export default function PeerRoomPage() {
       setParticipants(joinResult.participants);
       setView(joinResult.status === 'active' ? 'active' : 'lobby');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Room not found');
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr.response?.data?.error || (err instanceof Error ? err.message : 'Room not found'));
     } finally {
       setLoading(false);
     }

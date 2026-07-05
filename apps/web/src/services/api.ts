@@ -9,10 +9,15 @@ const api = axios.create({
 });
 
 // Access token management
-let accessToken: string | null = null;
+let accessToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
+  if (token) {
+    localStorage.setItem('accessToken', token);
+  } else {
+    localStorage.removeItem('accessToken');
+  }
 }
 
 export function getAccessToken(): string | null {

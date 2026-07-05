@@ -142,10 +142,7 @@ export async function joinRoom(
       throw ApiError.badRequest('Room is full (max 2 participants)');
     }
 
-    const name = u?.name || displayName;
-    if (!name) {
-      throw ApiError.badRequest('displayName is required for guest users');
-    }
+    const name = u?.name || displayName || 'Guest User';
 
     room.participants.push({
       userId: u?._id,
