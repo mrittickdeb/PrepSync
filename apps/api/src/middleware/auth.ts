@@ -6,9 +6,7 @@ import { ApiError } from './error';
 // Extend Express request type
 declare global {
   namespace Express {
-    interface Request {
-      user?: IUser;
-    }
+    interface User extends IUser {}
   }
 }
 

@@ -37,7 +37,7 @@ export async function submitCode(
       throw ApiError.badRequest('Unsupported language');
     }
 
-    const { compiler, filename } = COMPILER_MAP[language];
+    const { compiler } = COMPILER_MAP[language];
 
     const wandboxRes = await fetch(WANDBOX_URL, {
       method: 'POST',
@@ -57,7 +57,7 @@ export async function submitCode(
       throw ApiError.badRequest(`Code execution service error: ${wandboxRes.status} ${text}`);
     }
 
-    const result = await wandboxRes.json();
+    const result = (await wandboxRes.json()) as any;
 
     // Wandbox response fields:
     //   status: exit code (0 = success)
