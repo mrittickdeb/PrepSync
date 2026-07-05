@@ -137,6 +137,13 @@ export async function sendMessage(
 
     const populated = await message.populate('userId', 'name avatarUrl');
 
+    try {
+      const { getIO } = require('../socket/socketHandler');
+      getIO().to(`group:${id}`).emit('group:message', populated);
+    } catch {
+      // ignore socket emit error
+    }
+
     res.status(201).json(populated);
   } catch (error) {
     next(error);

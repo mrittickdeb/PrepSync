@@ -164,6 +164,14 @@ export async function sendMessage(
     await thread.save();
 
     const populated = await message.populate('senderId', 'name avatarUrl');
+
+    try {
+      const { getIO } = require('../socket/socketHandler');
+      getIO().to(`dm:${threadId}`).emit('dm:message', populated);
+    } catch {
+      // ignore socket emit error
+    }
+
     res.status(201).json(populated);
   } catch (error) {
     next(error);

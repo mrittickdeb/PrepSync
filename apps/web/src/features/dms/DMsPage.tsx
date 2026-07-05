@@ -12,6 +12,7 @@ import {
 import { createRoom } from '@/services/room.service';
 import { uploadFile } from '@/services/upload.service';
 import { useAuthStore } from '@/stores/authStore';
+import { connectSocket } from '@/services/socket';
 
 export default function DMsPage() {
   const { threadId: activeThreadId } = useParams<{ threadId?: string }>();
@@ -36,19 +37,60 @@ export default function DMsPage() {
   useEffect(() => {
     fetchThreads();
     
+    // Auto-poll threads list every 4 seconds
+    const threadInterval = setInterval(() => {
+      fetchThreadsSilently();
+    }, 4000);
+
     function handleResize() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (!mobile) setThreadsPanelOpen(true);
     }
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    return () => {
+      clearInterval(threadInterval);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
-    if (activeThreadId) {
-      fetchMessages(activeThreadId);
+    if (!activeThreadId) return;
+
+    fetchMessages(activeThreadId);
+
+    // Auto-poll active thread messages every 3 seconds
+    const msgInterval = setInterval(() => {
+      fetchMessagesSilently(activeThreadId);
+    }, 3000);
+
+    // Connect socket for instant real-time delivery
+    let socket: ReturnType<typeof connectSocket> | null = null;
+    try {
+      socket = connectSocket();
+      socket.emit('dm:join', { threadId: activeThreadId });
+
+      socket.on('dm:message', (newMsg: DMMessageData) => {
+        if (newMsg.threadId === activeThreadId) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === newMsg._id)) return prev;
+            return [...prev, newMsg];
+          });
+          fetchThreadsSilently();
+        }
+      });
+    } catch {
+      // socket fallback to polling
     }
+
+    return () => {
+      clearInterval(msgInterval);
+      if (socket) {
+        socket.emit('dm:leave', { threadId: activeThreadId });
+        socket.off('dm:message');
+      }
+    };
   }, [activeThreadId]);
 
   useEffect(() => {
@@ -66,6 +108,15 @@ export default function DMsPage() {
     }
   };
 
+  const fetchThreadsSilently = async () => {
+    try {
+      const data = await listDMThreads();
+      setThreads(data.threads);
+    } catch {
+      // ignore
+    }
+  };
+
   const fetchMessages = async (tId: string) => {
     setLoadingMessages(true);
     try {
@@ -75,6 +126,18 @@ export default function DMsPage() {
       setMessages([]);
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const fetchMessagesSilently = async (tId: string) => {
+    try {
+      const data = await getDMMessages(tId);
+      setMessages((prev) => {
+        if (data.messages.length === prev.length) return prev;
+        return data.messages;
+      });
+    } catch {
+      // ignore
     }
   };
 

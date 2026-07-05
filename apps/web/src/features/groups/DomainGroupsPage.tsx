@@ -23,6 +23,7 @@ import {
 } from '@/services/upload.service';
 import { createDMThread } from '@/services/dm.service';
 import { useAuthStore } from '@/stores/authStore';
+import { connectSocket } from '@/services/socket';
 import StudyLounge from './StudyLounge';
 import GroupCall from './GroupCall';
 
@@ -100,6 +101,11 @@ export default function DomainGroupsPage() {
   useEffect(() => {
     fetchGroups();
     
+    // Poll groups list every 5s for lastMessage preview updates
+    const groupsInterval = setInterval(() => {
+      listGroups().then((data) => setGroups(data.groups)).catch(() => {});
+    }, 5000);
+
     function handleResize() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
@@ -108,12 +114,49 @@ export default function DomainGroupsPage() {
       }
     }
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
-  // Fetch messages when active group changes
+    return () => {
+      clearInterval(groupsInterval);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [mainView]);
+
+  // Fetch messages + real-time socket + 3s polling fallback when active group changes
   useEffect(() => {
-    if (activeGroup) fetchMessages(activeGroup);
+    if (!activeGroup) return;
+
+    fetchMessages(activeGroup);
+
+    // Auto-poll active group messages every 3s
+    const msgInterval = setInterval(() => {
+      fetchMessagesSilently(activeGroup);
+    }, 3000);
+
+    // Socket.io for instant real-time delivery
+    let socket: ReturnType<typeof connectSocket> | null = null;
+    try {
+      socket = connectSocket();
+      socket.emit('group:join', { groupId: activeGroup });
+
+      socket.on('group:message', (newMsg: GroupMessageData) => {
+        if (newMsg.groupId === activeGroup) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === newMsg._id)) return prev;
+            return [...prev, newMsg];
+          });
+        }
+      });
+    } catch {
+      // socket fallback to polling
+    }
+
+    return () => {
+      clearInterval(msgInterval);
+      if (socket) {
+        socket.emit('group:leave', { groupId: activeGroup });
+        socket.off('group:message');
+      }
+    };
   }, [activeGroup]);
 
   // Auto-scroll on new messages
@@ -166,6 +209,18 @@ export default function DomainGroupsPage() {
       setMessages([]);
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const fetchMessagesSilently = async (gId: string) => {
+    try {
+      const data = await getGroupMessages(gId);
+      setMessages((prev) => {
+        if (data.messages.length === prev.length) return prev;
+        return data.messages;
+      });
+    } catch {
+      // ignore
     }
   };
 
