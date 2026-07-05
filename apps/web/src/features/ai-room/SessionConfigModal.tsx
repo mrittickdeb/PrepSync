@@ -54,8 +54,9 @@ export default function SessionConfigModal({ isOpen, onClose }: SessionConfigMod
         },
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to start session';
-      setError(message);
+      const axiosErr = err as { response?: { data?: { error?: string }; status?: number } };
+      const backendMsg = axiosErr.response?.data?.error;
+      setError(backendMsg || (err instanceof Error ? err.message : 'Failed to start session'));
     } finally {
       setLoading(false);
     }

@@ -3,14 +3,17 @@ import { PageWrapper } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/stores/authStore';
+import api from '@/services/api';
 
 type SettingsTab = 'profile' | 'security' | 'preferences';
 
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const setUser = useAuthStore((s) => s.setUser);
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Profile form state
   const [name, setName] = useState(user?.name || '');
@@ -18,8 +21,17 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    // TODO: call user update API
-    setTimeout(() => setSaving(false), 800);
+    setSaveSuccess(false);
+    try {
+      const { data } = await api.patch('/users/me', { name, weeklyGoal });
+      setUser(data);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch {
+      // handle error silently
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabs: { key: SettingsTab; label: string; icon: string }[] = [
@@ -131,7 +143,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex items-center justify-end gap-3 mt-6">
+                {saveSuccess && (
+                  <span className="text-caption text-green-400 font-sans">✓ Saved!</span>
+                )}
                 <Button onClick={handleSaveProfile} isLoading={saving}>
                   Save Changes
                 </Button>
