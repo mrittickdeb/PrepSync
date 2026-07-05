@@ -92,7 +92,7 @@ export default function SignupPage() {
             type="button"
             onClick={() => {
               if (redirect) localStorage.setItem('authRedirect', redirect);
-              window.location.href = '/api/auth/google';
+              window.location.href = `${import.meta.env.VITE_API_URL || '/api'}/auth/google`;
             }}
             className="w-full flex items-center justify-center gap-3 px-5 py-[10px] border border-border-default rounded-md text-body text-text-primary font-sans hover:bg-bg-overlay transition-colors mb-6"
           >
