@@ -7,9 +7,13 @@ import { DMThread, DMMessage } from '../models/DM';
 let io: Server;
 
 export function initSocketServer(httpServer: HttpServer): Server {
+  const allowedOrigin = env.CLIENT_URL.endsWith('/') 
+    ? env.CLIENT_URL.slice(0, -1) 
+    : env.CLIENT_URL;
+
   io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: [allowedOrigin, allowedOrigin + '/'],
       credentials: true,
     },
     pingInterval: 25000,

@@ -23,10 +23,14 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// CORS
+// CORS (Tolerant of trailing slashes in env var)
+const allowedOrigin = env.CLIENT_URL.endsWith('/') 
+  ? env.CLIENT_URL.slice(0, -1) 
+  : env.CLIENT_URL;
+
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: [allowedOrigin, allowedOrigin + '/'],
     credentials: true,
   })
 );
