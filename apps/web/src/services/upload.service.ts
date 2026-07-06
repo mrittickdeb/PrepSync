@@ -39,7 +39,23 @@ export function getResourceType(file: File): 'image' | 'video' | 'raw' {
   if (file.type.startsWith('image/')) return 'image';
   if (file.type.startsWith('video/')) return 'video';
   if (file.type.startsWith('audio/')) return 'video';
+  if (file.type === 'application/pdf') return 'image'; // Cloudinary supports PDF under image for inline viewing
   return 'raw';
+}
+
+// ===== Transform Cloudinary URL for proper file download =====
+
+export function getFileDownloadUrl(url: string, filename?: string): string {
+  if (!url) return '';
+  if (url.includes('cloudinary.com') && url.includes('/raw/upload/')) {
+    if (!url.includes('/fl_attachment')) {
+      const parts = url.split('/raw/upload/');
+      const cleanName = filename ? filename.replace(/[^a-zA-Z0-9_.-]/g, '_') : '';
+      const flag = cleanName ? `fl_attachment:${cleanName}` : 'fl_attachment';
+      return `${parts[0]}/raw/upload/${flag}/${parts[1]}`;
+    }
+  }
+  return url;
 }
 
 // ===== Determine attachment type from file =====

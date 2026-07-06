@@ -19,6 +19,7 @@ import {
   getAttachmentType,
   validateFile,
   formatFileSize,
+  getFileDownloadUrl,
   FILE_ACCEPT,
 } from '@/services/upload.service';
 import { createDMThread } from '@/services/dm.service';
@@ -491,8 +492,9 @@ export default function DomainGroupsPage() {
       default: {
         const ext = att.filename.split('.').pop()?.toLowerCase() || '';
         const icon = DOC_ICONS[ext] || '📄';
+        const downloadUrl = getFileDownloadUrl(att.url, att.filename);
         return (
-          <a href={att.url} target="_blank" rel="noopener noreferrer" className={clsx('dgp-media-doc', isMe && 'dgp-media-doc--me')}>
+          <a href={downloadUrl} download={att.filename} target="_blank" rel="noopener noreferrer" className={clsx('dgp-media-doc', isMe && 'dgp-media-doc--me')}>
             <span className="dgp-doc-icon">{icon}</span>
             <div className="dgp-doc-info">
               <p className="dgp-doc-name">{att.filename}</p>

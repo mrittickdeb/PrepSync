@@ -10,7 +10,7 @@ import {
   type DMMessageData,
 } from '@/services/dm.service';
 import { createRoom } from '@/services/room.service';
-import { uploadFile } from '@/services/upload.service';
+import { uploadFile, getFileDownloadUrl } from '@/services/upload.service';
 import { useAuthStore } from '@/stores/authStore';
 import { connectSocket } from '@/services/socket';
 
@@ -364,7 +364,8 @@ export default function DMsPage() {
                             {msg.attachments.map((att, idx) => (
                               <a
                                 key={idx}
-                                href={att.url}
+                                href={getFileDownloadUrl(att.url, att.filename)}
+                                download={att.filename}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={clsx(
