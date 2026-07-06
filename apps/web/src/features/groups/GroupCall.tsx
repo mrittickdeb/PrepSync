@@ -152,7 +152,7 @@ function VideoArea() {
       { source: Track.Source.Camera, withPlaceholder: true },
       { source: Track.Source.ScreenShare, withPlaceholder: false },
     ],
-    { onlySubscribed: false },
+    { onlySubscribed: true },
   );
 
   if (pinnedTrack) {
@@ -456,6 +456,17 @@ export default function GroupCall({ roomName }: GroupCallProps) {
         audio={true}
         token={token}
         serverUrl={LIVEKIT_URL}
+        options={{
+          dynacast: true,
+          adaptiveStream: true,
+          videoCaptureDefaults: {
+            resolution: {
+              width: 640,
+              height: 360,
+            },
+            frameRate: 15,
+          }
+        }}
         data-lk-theme="default"
         style={{ height: '100%', width: '100%' }}
       >
