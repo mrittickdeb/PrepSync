@@ -93,12 +93,31 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
     // ===== GROUP CHAT EVENTS =====
 
-    socket.on('group:join', (data: { groupId: string }) => {
+    socket.on('group:join', async (data: { groupId: string; user?: any }) => {
       socket.join(`group:${data.groupId}`);
+      socket.data.groupId = data.groupId;
+      if (data.user) {
+        socket.data.user = data.user;
+        socket.to(`group:${data.groupId}`).emit('group:user_joined', data.user);
+      }
+      
+      // Fetch current online members
+      const roomSockets = await io.in(`group:${data.groupId}`).fetchSockets();
+      const presentMembers = new Map();
+      roomSockets.forEach(s => {
+        if (s.data.user && s.data.user._id) {
+          presentMembers.set(s.data.user._id, s.data.user);
+        }
+      });
+      socket.emit('group:presence', Array.from(presentMembers.values()));
     });
 
     socket.on('group:leave', (data: { groupId: string }) => {
       socket.leave(`group:${data.groupId}`);
+      if (socket.data.user) {
+        socket.to(`group:${data.groupId}`).emit('group:user_left', { userId: socket.data.user._id });
+      }
+      socket.data.groupId = undefined;
     });
 
     socket.on('group:message', async (data: {
@@ -246,6 +265,13 @@ export function initSocketServer(httpServer: HttpServer): Server {
         socket.to(`room:${socket.data.roomId}`).emit('room:user-left', {
           socketId: socket.id,
           displayName: socket.data.displayName,
+        });
+      }
+
+      // Notify group if user was in one
+      if (socket.data.groupId && socket.data.user) {
+        socket.to(`group:${socket.data.groupId}`).emit('group:user_left', {
+          userId: socket.data.user._id,
         });
       }
     });

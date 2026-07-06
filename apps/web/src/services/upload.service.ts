@@ -36,7 +36,8 @@ async function getUploadSignature(
 // ===== Determine Cloudinary resource type from file =====
 
 export function getResourceType(file: File): 'image' | 'video' | 'raw' | 'auto' {
-  if (file.type.startsWith('image/') || file.type === 'application/pdf') return 'image';
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) return 'raw';
+  if (file.type.startsWith('image/')) return 'image';
   if (file.type.startsWith('video/')) return 'video';
   if (file.type.startsWith('audio/')) return 'video';
   return 'auto';

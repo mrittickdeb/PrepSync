@@ -77,6 +77,7 @@ export default function DomainGroupsPage() {
   const [mainView, setMainView] = useState<'chat' | 'lounge' | 'call'>('chat');
   const [groupsPanelOpen, setGroupsPanelOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [onlineMembers, setOnlineMembers] = useState<{ _id: string; name: string; avatarUrl?: string }[]>([]);
 
   // File upload states
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -137,7 +138,22 @@ export default function DomainGroupsPage() {
     let socket: ReturnType<typeof connectSocket> | null = null;
     try {
       socket = connectSocket();
-      socket.emit('group:join', { groupId: activeGroup });
+      socket.emit('group:join', { groupId: activeGroup, user });
+
+      socket.on('group:presence', (members: any[]) => {
+        setOnlineMembers(members);
+      });
+
+      socket.on('group:user_joined', (joinedUser: any) => {
+        setOnlineMembers((prev) => {
+          if (prev.some((m) => m._id === joinedUser._id)) return prev;
+          return [...prev, joinedUser];
+        });
+      });
+
+      socket.on('group:user_left', (data: { userId: string }) => {
+        setOnlineMembers((prev) => prev.filter((m) => m._id !== data.userId));
+      });
 
       socket.on('group:message', (newMsg: GroupMessageData) => {
         if (newMsg.groupId === activeGroup) {
@@ -156,9 +172,13 @@ export default function DomainGroupsPage() {
       if (socket) {
         socket.emit('group:leave', { groupId: activeGroup });
         socket.off('group:message');
+        socket.off('group:presence');
+        socket.off('group:user_joined');
+        socket.off('group:user_left');
       }
+      setOnlineMembers([]);
     };
-  }, [activeGroup]);
+  }, [activeGroup, user]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -588,6 +608,29 @@ export default function DomainGroupsPage() {
               <p className="dgp-header-meta">{activeGroupInfo?.totalMessages || 0} messages</p>
             </div>
           </div>
+          
+          {/* Online Members */}
+          <div className="flex-1 flex items-center justify-end px-4 gap-3 mr-2 hidden md:flex">
+             {onlineMembers.length > 0 && (
+               <div className="flex -space-x-2">
+                 {onlineMembers.slice(0, 4).map((m) => (
+                   <div key={m._id} className="w-7 h-7 rounded-full bg-accent/20 border-2 border-bg-surface flex items-center justify-center relative group" title={m.name}>
+                     <span className="text-xs text-accent font-medium">{m.name?.charAt(0)?.toUpperCase()}</span>
+                     <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 border border-bg-surface" />
+                   </div>
+                 ))}
+                 {onlineMembers.length > 4 && (
+                   <div className="w-7 h-7 rounded-full bg-bg-overlay border-2 border-bg-surface flex items-center justify-center z-10" title={`${onlineMembers.length - 4} more`}>
+                     <span className="text-[10px] text-text-secondary font-medium">+{onlineMembers.length - 4}</span>
+                   </div>
+                 )}
+               </div>
+             )}
+             {onlineMembers.length > 0 && (
+               <span className="text-xs text-text-secondary font-medium">{onlineMembers.length} online</span>
+             )}
+          </div>
+
           <div className="dgp-header-tabs">
             <button className={clsx('dgp-tab', mainView === 'chat' && 'dgp-tab--active')} onClick={() => setMainView('chat')}>Chat</button>
             <button className={clsx('dgp-tab', mainView === 'lounge' && 'dgp-tab--active')} onClick={() => setMainView('lounge')}>Study Lounge</button>
