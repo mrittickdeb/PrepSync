@@ -218,6 +218,18 @@ export function initSocketServer(httpServer: HttpServer): Server {
       socket.join(`whiteboard:${data.roomId}`);
     });
 
+    socket.on('whiteboard:request-state', (data: { roomId: string }) => {
+      socket.to(`whiteboard:${data.roomId}`).emit('whiteboard:request-state', {
+        requesterId: socket.id,
+      });
+    });
+
+    socket.on('whiteboard:send-state', (data: { requesterId: string; state: string }) => {
+      socket.to(data.requesterId).emit('whiteboard:state', {
+        state: data.state,
+      });
+    });
+
     socket.on('whiteboard:update', (data: { roomId: string; objects: any }) => {
       socket.to(`whiteboard:${data.roomId}`).emit('whiteboard:update', {
         objects: data.objects,

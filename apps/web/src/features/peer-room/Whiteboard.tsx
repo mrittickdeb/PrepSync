@@ -227,8 +227,11 @@ export default function Whiteboard({ roomId }: WhiteboardProps) {
     const overlay = overlayRef.current;
     if (!canvas || !overlay) return;
     const resizeCanvas = () => {
-      const w = canvas.offsetWidth, h = canvas.offsetHeight;
-      if (w === 0 || h === 0) return;
+      let w = canvas.offsetWidth, h = canvas.offsetHeight;
+      if (w === 0 || h === 0) {
+        w = window.innerWidth;
+        h = window.innerHeight;
+      }
       const ctx = canvas.getContext('2d');
       let imageData: ImageData | null = null;
       if (ctx && canvas.width > 0 && canvas.height > 0 && initializedRef.current)
@@ -247,6 +250,32 @@ export default function Whiteboard({ roomId }: WhiteboardProps) {
 
     const socket = getSocket();
     socket.emit('whiteboard:join', { roomId });
+    
+    // Request state from existing peers
+    socket.emit('whiteboard:request-state', { roomId });
+
+    const handleRequestState = (data: { requesterId: string }) => {
+      const c = canvasRef.current;
+      if (c && initializedRef.current) {
+        // Add a slight random delay to stagger responses if multiple users are in the room
+        setTimeout(() => {
+          const dataURL = c.toDataURL('image/png');
+          getSocket().emit('whiteboard:send-state', { requesterId: data.requesterId, state: dataURL });
+        }, Math.random() * 300);
+      }
+    };
+
+    const handleState = (data: { state: string }) => {
+      const c = canvasRef.current;
+      const ctx = c?.getContext('2d');
+      if (!c || !ctx) return;
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = data.state;
+    };
+
     const handleUpdate = (data: { objects: any }) => {
       const c = canvasRef.current;
       const context = c?.getContext('2d');
@@ -313,7 +342,14 @@ export default function Whiteboard({ roomId }: WhiteboardProps) {
       }
     };
     socket.on('whiteboard:update', handleUpdate);
-    return () => { observer.disconnect(); socket.off('whiteboard:update', handleUpdate); };
+    socket.on('whiteboard:request-state', handleRequestState);
+    socket.on('whiteboard:state', handleState);
+    return () => { 
+      observer.disconnect(); 
+      socket.off('whiteboard:update', handleUpdate); 
+      socket.off('whiteboard:request-state', handleRequestState);
+      socket.off('whiteboard:state', handleState);
+    };
   }, [roomId, clearCanvas]);
 
   // ─── Zoom with scroll ──────────────────────────────────
