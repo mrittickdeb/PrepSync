@@ -25,12 +25,18 @@ export async function listGroups(
     // Get last message + unread count for each group
     const groups = await Promise.all(
       VALID_GROUPS.map(async (groupId) => {
-        const lastMessage = await GroupMessage.findOne({ groupId })
+        const lastMessage = await GroupMessage.findOne({ 
+          groupId, 
+          createdAt: { $gte: user.createdAt } 
+        })
           .sort({ createdAt: -1 })
           .populate('userId', 'name avatarUrl')
           .lean();
 
-        const totalMessages = await GroupMessage.countDocuments({ groupId });
+        const totalMessages = await GroupMessage.countDocuments({ 
+          groupId, 
+          createdAt: { $gte: user.createdAt } 
+        });
 
         return {
           groupId,
@@ -72,13 +78,13 @@ export async function getMessages(
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
     const [messages, total] = await Promise.all([
-      GroupMessage.find({ groupId: id })
+      GroupMessage.find({ groupId: id, createdAt: { $gte: user.createdAt } })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('userId', 'name avatarUrl')
         .lean(),
-      GroupMessage.countDocuments({ groupId: id }),
+      GroupMessage.countDocuments({ groupId: id, createdAt: { $gte: user.createdAt } }),
     ]);
 
     res.json({
