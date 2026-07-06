@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import { SessionConfigModal } from '@/features/ai-room';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { connectSocket, disconnectSocket } from '@/services/socket';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -68,10 +69,17 @@ export default function AppLayout() {
   // Establish global socket connection for presence and notifications
   useEffect(() => {
     if (user?._id) {
+      const fetchNotifications = useNotificationStore.getState().fetchNotifications;
+      const initSocket = useNotificationStore.getState().initSocket;
+
+      fetchNotifications();
       const socket = connectSocket();
       socket.emit('user:setup', { userId: user._id });
 
+      const cleanSocket = initSocket(socket);
+
       return () => {
+        cleanSocket();
         disconnectSocket();
       };
     }

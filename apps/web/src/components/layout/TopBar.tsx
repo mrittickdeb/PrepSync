@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import Avatar from '../ui/Avatar';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 interface TopBarProps {
   title: string;
@@ -18,7 +20,13 @@ export default function TopBar({
   onMenuClick,
 }: TopBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotificationStore();
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -26,12 +34,15 @@ export default function TopBar({
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
     }
-    if (dropdownOpen) {
+    if (dropdownOpen || notificationsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownOpen]);
+  }, [dropdownOpen, notificationsOpen]);
 
   return (
     <header className="h-16 border-b border-border-subtle bg-bg-base flex items-center justify-between px-4 md:px-8 shrink-0">
@@ -53,16 +64,90 @@ export default function TopBar({
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Notification bell placeholder */}
-        <button
-          className="text-text-muted hover:text-text-secondary transition-colors p-2 rounded-md hover:bg-bg-overlay"
-          aria-label="Notifications"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-        </button>
+        {/* Notification bell dropdown */}
+        <div className="relative" ref={notificationsRef}>
+          <button
+            onClick={() => {
+              setNotificationsOpen((prev) => !prev);
+              setDropdownOpen(false);
+            }}
+            className="text-text-muted hover:text-text-secondary transition-colors p-2 rounded-md hover:bg-bg-overlay relative flex items-center justify-center"
+            aria-label="Notifications"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-bg-base">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 bg-bg-elevated border border-border-subtle rounded-lg shadow-lg py-1 z-50 max-h-96 overflow-y-auto">
+              <div className="px-4 py-2 border-b border-border-subtle flex items-center justify-between">
+                <span className="font-semibold text-body text-text-primary">Notifications</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllAsRead()}
+                    className="text-xs text-accent hover:underline font-medium"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <div className="divide-y divide-border-subtle">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-caption text-text-muted">
+                    No notifications
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif._id}
+                      onClick={() => {
+                        markAsRead(notif._id);
+                        navigate(notif.link);
+                        setNotificationsOpen(false);
+                      }}
+                      className={clsx(
+                        "px-4 py-3 hover:bg-bg-overlay transition-colors cursor-pointer flex gap-3 items-start",
+                        !notif.read && "bg-accent-dim/30"
+                      )}
+                    >
+                      <div className="mt-0.5 text-lg">
+                        {notif.type === 'dm' ? '💬' : notif.type === 'reply' ? '↩️' : '🔔'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={clsx("text-body text-text-primary font-sans truncate", !notif.read && "font-semibold")}>
+                          {notif.title}
+                        </p>
+                        <p className="text-caption text-text-muted font-sans line-clamp-2 mt-0.5">
+                          {notif.body}
+                        </p>
+                        <span className="text-[10px] text-text-muted block mt-1">
+                          {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notif._id);
+                        }}
+                        className="text-text-muted hover:text-danger p-0.5 rounded"
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User avatar dropdown */}
         <div className="relative" ref={dropdownRef}>

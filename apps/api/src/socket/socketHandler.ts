@@ -3,7 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { env } from '../config/env';
 import GroupMessage from '../models/GroupMessage';
 import { DMThread, DMMessage } from '../models/DM';
-import { User } from '../models';
+import { User, Notification } from '../models';
 import { sendDMNotification } from '../lib/email';
 
 let io: Server;
@@ -153,6 +153,25 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
         // Broadcast to all group members
         io.to(`group:${data.groupId}`).emit('group:message', populated);
+
+        // Check if this is a reply to another user's message
+        if (data.replyTo) {
+          const parentMsg = await GroupMessage.findById(data.replyTo.messageId).lean();
+          if (parentMsg && parentMsg.userId.toString() !== data.userId.toString()) {
+            const senderName = data.displayName || 'Someone';
+            // Save in-app notification to DB
+            const dbNotification = await Notification.create({
+              userId: parentMsg.userId,
+              type: 'reply',
+              title: `New reply from ${senderName}`,
+              body: data.content.slice(0, 80),
+              link: `/groups/${data.groupId}`,
+            });
+
+            // Emit to recipient's personal room
+            io.to(`user:${parentMsg.userId}`).emit('notification:new', dbNotification);
+          }
+        }
       } catch (err) {
         socket.emit('error', { message: 'Failed to send group message' });
       }
@@ -210,11 +229,24 @@ export function initSocketServer(httpServer: HttpServer): Server {
         if (thread) {
           const recipientId = thread.participants.find(p => p.toString() !== data.senderId);
           if (recipientId) {
+            const senderName = (populated.senderId as any)?.name || 'Someone';
+
+            // Create in-app notification in DB
+            const dbNotification = await Notification.create({
+              userId: recipientId,
+              type: 'dm',
+              title: `New message from ${senderName}`,
+              body: data.content.slice(0, 80),
+              link: `/dms/${data.threadId}`,
+            });
+
+            // Emit to recipient's personal room
+            io.to(`user:${recipientId}`).emit('notification:new', dbNotification);
+
             const recipientSockets = await io.in(`user:${recipientId}`).fetchSockets();
             if (recipientSockets.length === 0) {
               const recipient = await User.findById(recipientId).lean();
               if (recipient && recipient.email) {
-                const senderName = (populated.senderId as any)?.name || 'Someone';
                 const dmLink = `${env.CLIENT_URL}/dms/${data.threadId}`;
                 await sendDMNotification(recipient.email, senderName, data.content.slice(0, 80), dmLink);
               }

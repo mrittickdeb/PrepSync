@@ -16,6 +16,7 @@ import codeRoutes from './routes/code';
 import uploadRoutes from './routes/upload';
 import magicLinkRoutes from './routes/magicLink';
 import livekitRoutes from './routes/livekit';
+import notificationRoutes from './routes/notification';
 import passport from './config/passport';
 
 const app = express();
@@ -62,6 +63,7 @@ app.use(codeRoutes);
 app.use(uploadRoutes);
 app.use(magicLinkRoutes);
 app.use(livekitRoutes);
+app.use(notificationRoutes);
 
 // Error handling
 app.use(notFoundHandler);
