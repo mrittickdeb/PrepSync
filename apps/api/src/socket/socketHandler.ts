@@ -177,6 +177,22 @@ export function initSocketServer(httpServer: HttpServer): Server {
       });
     });
 
+    socket.on('dm:mark_read', async (data: { threadId: string; userId: string }) => {
+      try {
+        await DMMessage.updateMany(
+          { threadId: data.threadId, readBy: { $ne: data.userId } },
+          { $addToSet: { readBy: data.userId } }
+        );
+        
+        io.to(`dm:${data.threadId}`).emit('dm:read', {
+          threadId: data.threadId,
+          userId: data.userId,
+        });
+      } catch (err) {
+        console.error('Failed to mark DM as read via socket:', err);
+      }
+    });
+
     // ===== CODE EDITOR SYNC (Yjs awareness) =====
 
     socket.on('editor:join', (data: { roomId: string }) => {
@@ -200,6 +216,18 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
     socket.on('whiteboard:join', (data: { roomId: string }) => {
       socket.join(`whiteboard:${data.roomId}`);
+    });
+
+    socket.on('whiteboard:request-state', (data: { roomId: string }) => {
+      socket.to(`whiteboard:${data.roomId}`).emit('whiteboard:request-state', {
+        requesterId: socket.id,
+      });
+    });
+
+    socket.on('whiteboard:send-state', (data: { requesterId: string; state: string }) => {
+      socket.to(data.requesterId).emit('whiteboard:state', {
+        state: data.state,
+      });
     });
 
     socket.on('whiteboard:update', (data: { roomId: string; objects: any }) => {

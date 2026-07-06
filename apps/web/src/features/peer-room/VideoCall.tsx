@@ -26,6 +26,7 @@ export default function VideoCall({ roomId, displayName }: VideoCallProps) {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const mediaPromiseRef = useRef<Promise<void> | null>(null);
 
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -35,7 +36,7 @@ export default function VideoCall({ roomId, displayName }: VideoCallProps) {
 
   // Start media and signaling on mount
   useEffect(() => {
-    startMedia();
+    mediaPromiseRef.current = startMedia();
     setupSignaling();
 
     return () => {
@@ -43,7 +44,7 @@ export default function VideoCall({ roomId, displayName }: VideoCallProps) {
     };
   }, [roomId]);
 
-  const startMedia = async () => {
+  const startMedia = async (): Promise<void> => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
@@ -66,6 +67,7 @@ export default function VideoCall({ roomId, displayName }: VideoCallProps) {
     socket.on('webrtc:offer', async (data: { offer: RTCSessionDescriptionInit; socketId: string }) => {
       setConnecting(true);
       try {
+        if (mediaPromiseRef.current) await mediaPromiseRef.current;
         await createPeerConnection();
         const pc = pcRef.current!;
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -100,7 +102,8 @@ export default function VideoCall({ roomId, displayName }: VideoCallProps) {
     });
 
     // When a new user joins the room, initiate the call
-    socket.on('room:user-joined', () => {
+    socket.on('room:user-joined', async () => {
+      if (mediaPromiseRef.current) await mediaPromiseRef.current;
       initiateCall();
     });
   };

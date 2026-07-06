@@ -651,8 +651,13 @@ export default function DomainGroupsPage() {
                           >
                             {isMe ? 'You' : (msg.userId?.name || 'Unknown')}
                           </span>
-                          <span className="dgp-msg-time">
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <span className="dgp-msg-time flex items-center gap-1">
+                            <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {isMe && (
+                              <span className="flex tracking-tighter ml-0.5 text-text-muted">
+                                ✓
+                              </span>
+                            )}
                           </span>
                         </div>
 
