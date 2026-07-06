@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D4FF" />
+      <stop offset="100%" stop-color="#0072FF" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <rect width="128" height="128" rx="28" fill="#111318" />
+  
+  <circle cx="64" cy="64" r="48" fill="none" stroke="url(#logo-grad)" stroke-width="4" stroke-dasharray="12 8" opacity="0.4" />
+  <circle cx="64" cy="64" r="38" fill="none" stroke="url(#logo-grad)" stroke-width="2.5" opacity="0.2" />
+
+  <path d="M48 48L32 64L48 80" fill="none" stroke="url(#logo-grad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)" />
+  <path d="M80 48L96 64L80 80" fill="none" stroke="url(#logo-grad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)" />
+  
+  <circle cx="64" cy="64" r="8" fill="#00D4FF" filter="url(#shadow)" />
+</svg>
