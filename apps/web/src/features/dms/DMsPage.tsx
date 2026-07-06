@@ -142,18 +142,6 @@ export default function DMsPage() {
     }
   };
 
-  const fetchMessagesSilently = async (tId: string) => {
-    try {
-      const data = await getDMMessages(tId);
-      setMessages((prev) => {
-        if (data.messages.length === prev.length) return prev;
-        return data.messages;
-      });
-    } catch {
-      // ignore
-    }
-  };
-
   const handleSend = useCallback(async () => {
     if (!messageInput.trim() || sending || !activeThreadId) return;
     setSending(true);
