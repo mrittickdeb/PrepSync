@@ -5,6 +5,7 @@ import TopBar from './TopBar';
 import { SessionConfigModal } from '@/features/ai-room';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { connectSocket, disconnectSocket } from '@/services/socket';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -19,6 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
 
 export default function AppLayout() {
   const location = useLocation();
+  useThemeStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [groupCallActive, setGroupCallActive] = useState(false);
   const [showSessionConfig, setShowSessionConfig] = useState(false);

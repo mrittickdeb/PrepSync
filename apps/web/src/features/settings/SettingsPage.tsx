@@ -3,6 +3,7 @@ import { PageWrapper } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import api from '@/services/api';
 
 type SettingsTab = 'profile' | 'security' | 'preferences';
@@ -11,6 +12,7 @@ export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const setUser = useAuthStore((s) => s.setUser);
+  const { theme, toggleTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -199,11 +201,23 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between py-2">
                   <div>
                     <p className="text-body text-text-primary font-sans">Dark Mode</p>
-                    <p className="text-caption text-text-muted font-sans">Always enabled ("Terminal Intelligence" design)</p>
+                    <p className="text-caption text-text-muted font-sans">Toggle between dark and light themes</p>
                   </div>
-                  <div className="w-11 h-6 bg-accent rounded-full flex items-center p-0.5">
-                    <div className="w-5 h-5 bg-white rounded-full ml-auto" />
-                  </div>
+                  <button
+                    onClick={toggleTheme}
+                    className={clsx(
+                      "w-11 h-6 rounded-full flex items-center p-0.5 transition-colors duration-200 outline-none",
+                      theme === 'dark' ? "bg-accent" : "bg-bg-overlay border border-border-subtle"
+                    )}
+                    aria-label="Toggle dark mode"
+                  >
+                    <div
+                      className={clsx(
+                        "w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200",
+                        theme === 'dark' ? "translate-x-5" : "translate-x-0"
+                      )}
+                    />
+                  </button>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <div>

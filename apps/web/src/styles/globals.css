@@ -43,6 +43,38 @@
   --color-domain-behavioural: #EC4899;
 }
 
+:root.light {
+  /* Backgrounds */
+  --color-bg-base: #F4F5F8;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #E9ECF2;
+  --color-bg-overlay: #DFE3EC;
+
+  /* Borders */
+  --color-border-subtle: #E2E6EE;
+  --color-border-default: #D1D6E2;
+  --color-border-strong: #A3AEC5;
+
+  /* Text */
+  --color-text-primary: #1C1F26;
+  --color-text-secondary: #5E667A;
+  --color-text-muted: #8E98B0;
+  --color-text-inverse: #FFFFFF;
+
+  /* Accent */
+  --color-accent: #0284C7;
+  --color-accent-dim: #E0F2FE;
+  --color-accent-border: #BAE6FD;
+
+  /* Semantic */
+  --color-success: #10B981;
+  --color-success-dim: #D1FAE5;
+  --color-warning: #F59E0B;
+  --color-warning-dim: #FEF3C7;
+  --color-danger: #EF4444;
+  --color-danger-dim: #FEE2E2;
+}
+
 /* Base styles */
 *,
 *::before,
