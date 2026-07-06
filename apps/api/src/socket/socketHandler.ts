@@ -3,6 +3,8 @@ import { Server, Socket } from 'socket.io';
 import { env } from '../config/env';
 import GroupMessage from '../models/GroupMessage';
 import { DMThread, DMMessage } from '../models/DM';
+import { User } from '../models';
+import { sendDMNotification } from '../lib/email';
 
 let io: Server;
 
@@ -22,6 +24,12 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
   io.on('connection', (socket: Socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
+
+    // ===== USER SETUP =====
+    socket.on('user:setup', (data: { userId: string }) => {
+      socket.join(`user:${data.userId}`);
+      socket.data.globalUserId = data.userId;
+    });
 
     // ===== PEER ROOM EVENTS =====
 
@@ -176,15 +184,31 @@ export function initSocketServer(httpServer: HttpServer): Server {
         });
 
         // Update thread preview
-        await DMThread.findByIdAndUpdate(data.threadId, {
+        const thread = await DMThread.findByIdAndUpdate(data.threadId, {
           lastMessageAt: new Date(),
           lastMessagePreview: data.content.slice(0, 80),
-        });
+        }).lean();
 
         const populated = await message.populate('senderId', 'name avatarUrl');
 
         // Broadcast to thread participants
         io.to(`dm:${data.threadId}`).emit('dm:message', populated);
+
+        // Check if recipient is offline to send email notification
+        if (thread) {
+          const recipientId = thread.participants.find(p => p.toString() !== data.senderId);
+          if (recipientId) {
+            const recipientSockets = await io.in(`user:${recipientId}`).fetchSockets();
+            if (recipientSockets.length === 0) {
+              const recipient = await User.findById(recipientId).lean();
+              if (recipient && recipient.email) {
+                const senderName = (populated.senderId as any)?.name || 'Someone';
+                const dmLink = `${env.CLIENT_URL}/dms/${data.threadId}`;
+                await sendDMNotification(recipient.email, senderName, data.content.slice(0, 80), dmLink);
+              }
+            }
+          }
+        }
       } catch (err) {
         socket.emit('error', { message: 'Failed to send DM' });
       }

@@ -81,3 +81,36 @@ export async function sendResendVerificationOTP(
     console.error(`[Email] Failed to resend OTP to ${to}:`, error);
   }
 }
+
+export async function sendDMNotification(
+  to: string,
+  senderName: string,
+  messagePreview: string,
+  dmLink: string,
+): Promise<void> {
+  try {
+    await sendEmail(
+      to,
+      `New message from ${senderName}`,
+      `
+        <div style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #0f172a; color: #e2e8f0; border-radius: 12px; border: 1px solid #334155;">
+          <h2 style="color: #38bdf8; margin-bottom: 16px;">New Direct Message</h2>
+          <p style="font-size: 16px;">You have a new message from <strong>${senderName}</strong>:</p>
+          <div style="margin: 24px 0; padding: 16px; background: #1e293b; border-left: 4px solid #38bdf8; border-radius: 4px; font-style: italic; color: #cbd5e1;">
+            "${messagePreview}"
+          </div>
+          <a href="${dmLink}" style="display: inline-block; padding: 12px 24px; background: #38bdf8; color: #0f172a; text-decoration: none; font-weight: bold; border-radius: 6px; margin-top: 16px;">
+            Reply to ${senderName}
+          </a>
+          <p style="color: #64748b; font-size: 12px; margin-top: 32px; border-top: 1px solid #334155; padding-top: 16px;">
+            You are receiving this email because you have unread messages on PrepSync while you were offline.
+          </p>
+        </div>
+      `,
+    );
+    console.log(`[Email] DM notification sent to ${to}`);
+  } catch (error) {
+    console.error(`[Email] Failed to send DM notification to ${to}:`, error);
+  }
+}
+

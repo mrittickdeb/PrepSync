@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import { SessionConfigModal } from '@/features/ai-room';
 import { useAuthStore } from '@/stores/authStore';
+import { connectSocket, disconnectSocket } from '@/services/socket';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -63,6 +64,18 @@ export default function AppLayout() {
     window.addEventListener('group-call-mode', handleCallMode);
     return () => window.removeEventListener('group-call-mode', handleCallMode);
   }, []);
+
+  // Establish global socket connection for presence and notifications
+  useEffect(() => {
+    if (user?._id) {
+      const socket = connectSocket();
+      socket.emit('user:setup', { userId: user._id });
+
+      return () => {
+        disconnectSocket();
+      };
+    }
+  }, [user?._id]);
 
   const pageTitle =
     PAGE_TITLES[location.pathname] ||
