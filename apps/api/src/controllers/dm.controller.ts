@@ -132,10 +132,15 @@ export async function sendMessage(
     if (!user) throw ApiError.unauthorized();
 
     const { threadId } = req.params;
-    const { content, type = 'text', attachments } = req.body as { 
+    const { content, type = 'text', attachments, replyTo } = req.body as { 
       content?: string; 
       type?: 'text' | 'file';
       attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[];
+      replyTo?: {
+        messageId: string;
+        senderName: string;
+        content: string;
+      };
     };
 
     if (type === 'text' && (!content || !content.trim())) {
@@ -156,6 +161,7 @@ export async function sendMessage(
       type,
       attachments,
       readBy: [user._id],
+      replyTo,
     });
 
     // Update thread with last message info

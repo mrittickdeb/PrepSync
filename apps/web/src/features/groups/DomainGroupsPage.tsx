@@ -78,6 +78,7 @@ export default function DomainGroupsPage() {
   const [groupsPanelOpen, setGroupsPanelOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [onlineMembers, setOnlineMembers] = useState<{ _id: string; name: string; avatarUrl?: string }[]>([]);
+  const [replyingTo, setReplyingTo] = useState<{ messageId: string; senderName: string; content: string } | null>(null);
 
   // File upload states
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -245,20 +246,32 @@ export default function DomainGroupsPage() {
     }
   };
 
+  const scrollToMessage = useCallback((msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('dgp-msg-flash');
+      setTimeout(() => {
+        el.classList.remove('dgp-msg-flash');
+      }, 1500);
+    }
+  }, []);
+
   // ── Send text message ──
   const handleSend = useCallback(async () => {
     if (!messageInput.trim() || sending) return;
     setSending(true);
     try {
-      const newMsg = await sendGroupMessage(activeGroup, messageInput.trim());
+      const newMsg = await sendGroupMessage(activeGroup, messageInput.trim(), replyingTo || undefined);
       setMessages((prev) => [...prev, newMsg]);
       setMessageInput('');
+      setReplyingTo(null);
     } catch {
       // ignore
     } finally {
       setSending(false);
     }
-  }, [activeGroup, messageInput, sending]);
+  }, [activeGroup, messageInput, replyingTo, sending]);
 
   // ── File picker ──
   const openFilePicker = (acceptType: string) => {
@@ -668,85 +681,121 @@ export default function DomainGroupsPage() {
                 messages.map((msg) => {
                   const isMe = msg.userId?._id === user?._id;
                   return (
-                    <div key={msg._id} className={clsx('dgp-msg', isMe && 'dgp-msg--me')}>
-                      {!isMe && (
-                        <div className="dgp-msg-avatar" style={{ backgroundColor: `${GROUP_COLORS[activeGroup] || '#00D4FF'}15` }}>
-                          <span className="dgp-msg-avatar-letter" style={{ color: GROUP_COLORS[activeGroup] }}>
-                            {msg.userId?.name?.charAt(0)?.toUpperCase() || '?'}
-                          </span>
-                        </div>
-                      )}
-                      <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
-                        <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
-                          <span
-                            className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me', !isMe && 'cursor-pointer hover:underline')}
-                            title={!isMe ? `DM ${msg.userId?.name}` : undefined}
-                            onClick={async (e) => {
-                              if (isMe || !msg.userId?._id) return;
-                              e.stopPropagation();
-                              try {
-                                const { threadId } = await createDMThread(msg.userId._id);
-                                navigate(`/dms/${threadId}`);
-                              } catch {
-                                // ignore
-                              }
-                            }}
-                          >
-                            {isMe ? 'You' : (msg.userId?.name || 'Unknown')}
-                          </span>
-                          <span className="dgp-msg-time flex items-center gap-1">
-                            <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            {isMe && (
-                              <span className="flex tracking-tighter ml-0.5 text-text-muted">
-                                ✓
-                              </span>
-                            )}
-                          </span>
-                        </div>
-
-                        {/* Text */}
-                        {msg.type === 'text' && <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>}
-
-                        {/* Voice */}
-                        {msg.type === 'voice' && msg.attachments?.map((att, i) => (
-                          <div key={i}>{renderAttachment(att, isMe)}</div>
-                        ))}
-
-                        {/* File attachments */}
-                        {msg.type === 'file' && (
-                          <>
-                            {msg.content && <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>}
-                            {msg.attachments?.map((att, i) => (
-                              <div key={i} style={{ marginTop: 6 }}>{renderAttachment(att, isMe)}</div>
-                            ))}
-                          </>
-                        )}
-
-                        {/* Poll */}
-                        {msg.type === 'poll' && msg.poll && (
-                          <div className="dgp-poll">
-                            <p className="dgp-poll-question">📊 {msg.poll.question}</p>
-                            <div className="dgp-poll-options">
-                              {msg.poll.options.map((opt, idx) => {
-                                const totalVotes = msg.poll!.options.reduce((sum, o) => sum + (o.voteCount || o.votes?.length || 0), 0);
-                                const voteCount = opt.voteCount || opt.votes?.length || 0;
-                                const pct = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
-                                return (
-                                  <button key={idx} onClick={() => handleVote(msg._id, idx)} disabled={msg.poll!.closed} className="dgp-poll-option">
-                                    <div className="dgp-poll-bar" style={{ width: `${pct}%`, backgroundColor: GROUP_COLORS[activeGroup] || '#00D4FF' }} />
-                                    <span className="dgp-poll-option-text">{opt.text}</span>
-                                    <span className="dgp-poll-option-count">{voteCount} ({pct}%)</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            {msg.poll.closed && <p className="dgp-poll-closed">Poll closed</p>}
+                    <div 
+                      key={msg._id} 
+                      id={`msg-${msg._id}`} 
+                      className={clsx('dgp-msg-row group/reply', isMe && 'dgp-msg-row--me')}
+                    >
+                      <div className={clsx('dgp-msg', isMe && 'dgp-msg--me')} style={{ flex: 1 }}>
+                        {!isMe && (
+                          <div className="dgp-msg-avatar" style={{ backgroundColor: `${GROUP_COLORS[activeGroup] || '#00D4FF'}15` }}>
+                            <span className="dgp-msg-avatar-letter" style={{ color: GROUP_COLORS[activeGroup] }}>
+                              {msg.userId?.name?.charAt(0)?.toUpperCase() || '?'}
+                            </span>
                           </div>
                         )}
+                        <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
+                          <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
+                            <span
+                              className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me', !isMe && 'cursor-pointer hover:underline')}
+                              title={!isMe ? `DM ${msg.userId?.name}` : undefined}
+                              onClick={async (e) => {
+                                if (isMe || !msg.userId?._id) return;
+                                e.stopPropagation();
+                                try {
+                                  const { threadId } = await createDMThread(msg.userId._id);
+                                  navigate(`/dms/${threadId}`);
+                                } catch {
+                                  // ignore
+                                }
+                              }}
+                            >
+                              {isMe ? 'You' : (msg.userId?.name || 'Unknown')}
+                            </span>
+                            <span className="dgp-msg-time flex items-center gap-1">
+                              <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {isMe && (
+                                <span className="flex tracking-tighter ml-0.5 text-text-muted">
+                                  ✓
+                                </span>
+                              )}
+                            </span>
+                          </div>
 
-                        {/* System */}
-                        {msg.type === 'system' && <p className="dgp-msg-system">{msg.content}</p>}
+                          {/* Quote Reply preview inside message bubble */}
+                          {msg.replyTo && (
+                            <div 
+                              onClick={() => scrollToMessage(msg.replyTo!.messageId as string)}
+                              className={clsx('dgp-msg-quote-preview cursor-pointer', isMe && 'dgp-msg-quote-preview--me')}
+                            >
+                              <div className="dgp-quote-content">
+                                <span className="dgp-quote-sender">{msg.replyTo.senderName}</span>
+                                <span className="dgp-quote-text">{msg.replyTo.content}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Text */}
+                          {msg.type === 'text' && <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>}
+
+                          {/* Voice */}
+                          {msg.type === 'voice' && msg.attachments?.map((att, i) => (
+                            <div key={i}>{renderAttachment(att, isMe)}</div>
+                          ))}
+
+                          {/* File attachments */}
+                          {msg.type === 'file' && (
+                            <>
+                              {msg.content && <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>}
+                              {msg.attachments?.map((att, i) => (
+                                <div key={i} style={{ marginTop: 6 }}>{renderAttachment(att, isMe)}</div>
+                              ))}
+                            </>
+                          )}
+
+                          {/* Poll */}
+                          {msg.type === 'poll' && msg.poll && (
+                            <div className="dgp-poll">
+                              <p className="dgp-poll-question">📊 {msg.poll.question}</p>
+                              <div className="dgp-poll-options">
+                                {msg.poll.options.map((opt, idx) => {
+                                  const totalVotes = msg.poll!.options.reduce((sum, o) => sum + (o.voteCount || o.votes?.length || 0), 0);
+                                  const voteCount = opt.voteCount || opt.votes?.length || 0;
+                                  const pct = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+                                  return (
+                                    <button key={idx} onClick={() => handleVote(msg._id, idx)} disabled={msg.poll!.closed} className="dgp-poll-option">
+                                      <div className="dgp-poll-bar" style={{ width: `${pct}%`, backgroundColor: GROUP_COLORS[activeGroup] || '#00D4FF' }} />
+                                      <span className="dgp-poll-option-text">{opt.text}</span>
+                                      <span className="dgp-poll-option-count">{voteCount} ({pct}%)</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {msg.poll.closed && <p className="dgp-poll-closed">Poll closed</p>}
+                            </div>
+                          )}
+
+                          {/* System */}
+                          {msg.type === 'system' && <p className="dgp-msg-system">{msg.content}</p>}
+                        </div>
                       </div>
+
+                      {/* WhatsApp Hover Reply Button */}
+                      <button
+                        onClick={() => {
+                          const replyName = isMe ? 'You' : (msg.userId?.name || 'Unknown');
+                          const replyText = msg.content || (msg.type === 'voice' ? '🎵 Voice message' : '📎 File attachment');
+                          setReplyingTo({ messageId: msg._id, senderName: replyName, content: replyText });
+                        }}
+                        className="dgp-msg-reply-btn"
+                        style={{ [isMe ? 'left' : 'right']: '-36px' }}
+                        title="Reply"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 17 4 12 9 7" />
+                          <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                        </svg>
+                      </button>
                     </div>
                   );
                 })
@@ -811,6 +860,16 @@ export default function DomainGroupsPage() {
                     <Button size="sm" onClick={confirmPreview}>Send</Button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {replyingTo && (
+              <div className="dgp-reply-bar">
+                <div className="dgp-reply-bar-content">
+                  <span className="dgp-reply-bar-sender">{replyingTo.senderName}</span>
+                  <span className="dgp-reply-bar-text">{replyingTo.content}</span>
+                </div>
+                <button onClick={() => setReplyingTo(null)} className="dgp-reply-bar-close">✕</button>
               </div>
             )}
 

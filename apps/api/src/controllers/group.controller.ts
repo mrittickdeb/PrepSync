@@ -111,7 +111,7 @@ export async function sendMessage(
       throw ApiError.notFound('Group not found');
     }
 
-    const { content, type = 'text', attachments } = req.body as {
+    const { content, type = 'text', attachments, replyTo } = req.body as {
       content?: string;
       type?: 'text' | 'file' | 'voice';
       attachments?: {
@@ -123,6 +123,11 @@ export async function sendMessage(
         duration?: number;
         thumbnailUrl?: string;
       }[];
+      replyTo?: {
+        messageId: string;
+        senderName: string;
+        content: string;
+      };
     };
 
     if (type === 'text' && (!content || !content.trim())) {
@@ -139,6 +144,7 @@ export async function sendMessage(
       type,
       content: content?.trim(),
       attachments,
+      replyTo,
     });
 
     const populated = await message.populate('userId', 'name avatarUrl');

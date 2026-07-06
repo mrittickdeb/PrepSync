@@ -29,6 +29,7 @@ export default function DMsPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ messageId: string; senderName: string; content: string } | null>(null);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [threadsPanelOpen, setThreadsPanelOpen] = useState(window.innerWidth >= 768 || !activeThreadId);
@@ -142,19 +143,31 @@ export default function DMsPage() {
     }
   };
 
+  const scrollToMessage = useCallback((msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('dgp-msg-flash');
+      setTimeout(() => {
+        el.classList.remove('dgp-msg-flash');
+      }, 1500);
+    }
+  }, []);
+
   const handleSend = useCallback(async () => {
     if (!messageInput.trim() || sending || !activeThreadId) return;
     setSending(true);
     try {
-      const newMsg = await sendDMMessage(activeThreadId, messageInput.trim());
+      const newMsg = await sendDMMessage(activeThreadId, messageInput.trim(), undefined, replyingTo || undefined);
       setMessages((prev) => [...prev, newMsg]);
       setMessageInput('');
+      setReplyingTo(null);
     } catch {
       // ignore
     } finally {
       setSending(false);
     }
-  }, [activeThreadId, messageInput, sending]);
+  }, [activeThreadId, messageInput, replyingTo, sending]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -359,78 +372,124 @@ export default function DMsPage() {
                 messages.map((msg) => {
                   const isMe = msg.senderId?._id === user?._id;
                   return (
-                    <div key={msg._id} className={clsx('dgp-msg', isMe && 'dgp-msg--me')}>
-                      {!isMe && (
-                        <div className="dgp-msg-avatar" style={{ backgroundColor: `#00D4FF15` }}>
-                          <span className="dgp-msg-avatar-letter" style={{ color: '#00D4FF' }}>
-                            {msg.senderId?.name?.charAt(0)?.toUpperCase() || '?'}
-                          </span>
-                        </div>
-                      )}
-                      
-                      <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
-                        <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
-                          <span className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me')}>
-                            {isMe ? 'You' : (msg.senderId?.name || 'Unknown')}
-                          </span>
-                          <span className="dgp-msg-time flex items-center gap-1">
-                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            {isMe && (
-                              <span className={clsx("flex tracking-tighter", (msg.readBy?.some(id => id !== user?._id)) ? 'text-[#00D4FF]' : 'text-text-muted')}>
-                                {(msg.readBy?.some(id => id !== user?._id)) ? '✓✓' : '✓'}
-                              </span>
-                            )}
-                          </span>
-                        </div>
-
-                        <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>
-
-                        {/* File attachments */}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="mt-2 flex flex-col gap-2">
-                            {msg.attachments.map((att, idx) => {
-                              const isImage = att.type === 'image';
-                              return isImage ? (
-                                <div 
-                                  key={idx} 
-                                  className="dgp-media-image mt-1" 
-                                  onClick={() => setLightboxUrl(att.url)}
-                                >
-                                  <img src={att.url} alt={att.filename} loading="lazy" />
-                                </div>
-                              ) : (
-                                <a 
-                                  key={idx} 
-                                  href={getFileDownloadUrl(att.url, att.filename)} 
-                                  download={att.filename}
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className={clsx('dgp-media-doc mt-1', isMe && 'dgp-media-doc--me')}
-                                >
-                                  <span className="dgp-doc-icon">📄</span>
-                                  <div className="dgp-doc-info text-left">
-                                    <p className="dgp-doc-name">{att.filename}</p>
-                                    <p className="dgp-doc-size">{formatFileSize(att.filesize)}</p>
-                                  </div>
-                                  <span className="dgp-doc-download">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                      <polyline points="7 10 12 15 17 10" />
-                                      <line x1="12" y1="15" x2="12" y2="3" />
-                                    </svg>
-                                  </span>
-                                </a>
-                              );
-                            })}
+                    <div 
+                      key={msg._id} 
+                      id={`msg-${msg._id}`} 
+                      className={clsx('dgp-msg-row group/reply', isMe && 'dgp-msg-row--me')}
+                    >
+                      <div className={clsx('dgp-msg', isMe && 'dgp-msg--me')} style={{ flex: 1 }}>
+                        {!isMe && (
+                          <div className="dgp-msg-avatar" style={{ backgroundColor: `#00D4FF15` }}>
+                            <span className="dgp-msg-avatar-letter" style={{ color: '#00D4FF' }}>
+                              {msg.senderId?.name?.charAt(0)?.toUpperCase() || '?'}
+                            </span>
                           </div>
                         )}
+                        
+                        <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
+                          <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
+                            <span className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me')}>
+                              {isMe ? 'You' : (msg.senderId?.name || 'Unknown')}
+                            </span>
+                            <span className="dgp-msg-time flex items-center gap-1">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {isMe && (
+                                <span className={clsx("flex tracking-tighter", (msg.readBy?.some(id => id !== user?._id)) ? 'text-[#00D4FF]' : 'text-text-muted')}>
+                                  {(msg.readBy?.some(id => id !== user?._id)) ? '✓✓' : '✓'}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Quote Reply preview inside message bubble */}
+                          {msg.replyTo && (
+                            <div 
+                              onClick={() => scrollToMessage(msg.replyTo!.messageId as string)}
+                              className={clsx('dgp-msg-quote-preview cursor-pointer', isMe && 'dgp-msg-quote-preview--me')}
+                            >
+                              <div className="dgp-quote-content">
+                                <span className="dgp-quote-sender">{msg.replyTo.senderName}</span>
+                                <span className="dgp-quote-text">{msg.replyTo.content}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>
+
+                          {/* File attachments */}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="mt-2 flex flex-col gap-2">
+                              {msg.attachments.map((att, idx) => {
+                                const isImage = att.type === 'image';
+                                return isImage ? (
+                                  <div 
+                                    key={idx} 
+                                    className="dgp-media-image mt-1" 
+                                    onClick={() => setLightboxUrl(att.url)}
+                                  >
+                                    <img src={att.url} alt={att.filename} loading="lazy" />
+                                  </div>
+                                ) : (
+                                  <a 
+                                    key={idx} 
+                                    href={getFileDownloadUrl(att.url, att.filename)} 
+                                    download={att.filename}
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className={clsx('dgp-media-doc mt-1', isMe && 'dgp-media-doc--me')}
+                                  >
+                                    <span className="dgp-doc-icon">📄</span>
+                                    <div className="dgp-doc-info text-left">
+                                      <p className="dgp-doc-name">{att.filename}</p>
+                                      <p className="dgp-doc-size">{formatFileSize(att.filesize)}</p>
+                                    </div>
+                                    <span className="dgp-doc-download">
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                      </svg>
+                                    </span>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
+
+                      {/* WhatsApp Hover Reply Button */}
+                      <button
+                        onClick={() => {
+                          const replyName = isMe ? 'You' : (msg.senderId?.name || 'Unknown');
+                          const replyText = msg.content || '📎 File attachment';
+                          setReplyingTo({ messageId: msg._id, senderName: replyName, content: replyText });
+                        }}
+                        className="dgp-msg-reply-btn"
+                        style={{ [isMe ? 'left' : 'right']: '-36px' }}
+                        title="Reply"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 17 4 12 9 7" />
+                          <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                        </svg>
+                      </button>
                     </div>
                   );
                 })
               )}
               <div ref={chatEndRef} />
             </div>
+
+            {replyingTo && (
+              <div className="dgp-reply-bar">
+                <div className="dgp-reply-bar-content">
+                  <span className="dgp-reply-bar-sender">{replyingTo.senderName}</span>
+                  <span className="dgp-reply-bar-text">{replyingTo.content}</span>
+                </div>
+                <button onClick={() => setReplyingTo(null)} className="dgp-reply-bar-close">✕</button>
+              </div>
+            )}
 
             {/* Input */}
             <div className="bg-bg-surface border-t border-border-subtle p-3">

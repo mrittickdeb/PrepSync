@@ -28,6 +28,11 @@ export interface IDMMessage extends Document {
   type: 'text' | 'file' | 'system';
   attachments?: AttachmentDoc[];
   readBy: mongoose.Types.ObjectId[];
+  replyTo?: {
+    messageId: mongoose.Types.ObjectId;
+    senderName: string;
+    content: string;
+  };
   createdAt: Date;
 }
 
@@ -66,6 +71,11 @@ const dmMessageSchema = new Schema<IDMMessage>(
     type: { type: String, required: true, enum: ['text', 'file', 'system'], default: 'text' },
     attachments: [attachmentSchema],
     readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    replyTo: {
+      messageId: { type: Schema.Types.ObjectId, ref: 'DMMessage' },
+      senderName: { type: String },
+      content: { type: String },
+    },
   },
   { timestamps: true },
 );

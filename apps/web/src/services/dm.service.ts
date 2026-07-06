@@ -21,6 +21,11 @@ export interface DMMessageData {
   type: 'text' | 'file' | 'system';
   attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[];
   readBy?: string[];
+  replyTo?: {
+    messageId: string;
+    senderName: string;
+    content: string;
+  };
   createdAt: string;
 }
 
@@ -45,12 +50,14 @@ export async function getDMMessages(
 export async function sendDMMessage(
   threadId: string, 
   content: string, 
-  attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[]
+  attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[],
+  replyTo?: { messageId: string; senderName: string; content: string }
 ): Promise<DMMessageData> {
   const { data } = await api.post(`/dms/${threadId}/messages`, { 
     content, 
     type: attachments?.length ? 'file' : 'text',
-    attachments 
+    attachments,
+    replyTo
   });
   return data;
 }

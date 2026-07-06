@@ -133,6 +133,11 @@ export function initSocketServer(httpServer: HttpServer): Server {
       userId: string;
       content: string;
       displayName: string;
+      replyTo?: {
+        messageId: string;
+        senderName: string;
+        content: string;
+      };
     }) => {
       try {
         // Persist to database
@@ -141,6 +146,7 @@ export function initSocketServer(httpServer: HttpServer): Server {
           userId: data.userId,
           type: 'text',
           content: data.content,
+          replyTo: data.replyTo,
         });
 
         const populated = await message.populate('userId', 'name avatarUrl');
@@ -172,6 +178,11 @@ export function initSocketServer(httpServer: HttpServer): Server {
       threadId: string;
       senderId: string;
       content: string;
+      replyTo?: {
+        messageId: string;
+        senderName: string;
+        content: string;
+      };
     }) => {
       try {
         // Persist to database
@@ -181,6 +192,7 @@ export function initSocketServer(httpServer: HttpServer): Server {
           content: data.content,
           type: 'text',
           readBy: [data.senderId],
+          replyTo: data.replyTo,
         });
 
         // Update thread preview

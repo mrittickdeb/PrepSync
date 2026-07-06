@@ -48,6 +48,11 @@ export interface GroupMessageData {
     expiresAt?: string;
     closed: boolean;
   };
+  replyTo?: {
+    messageId: string;
+    senderName: string;
+    content: string;
+  };
   createdAt: string;
 }
 
@@ -68,8 +73,9 @@ export async function getGroupMessages(
 export async function sendGroupMessage(
   groupId: string,
   content: string,
+  replyTo?: { messageId: string; senderName: string; content: string },
 ): Promise<GroupMessageData> {
-  const { data } = await api.post(`/groups/${groupId}/messages`, { content, type: 'text' });
+  const { data } = await api.post(`/groups/${groupId}/messages`, { content, type: 'text', replyTo });
   return data;
 }
 

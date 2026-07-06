@@ -33,6 +33,11 @@ export interface IGroupMessage extends Document {
   content?: string;
   attachments?: AttachmentDoc[];
   poll?: PollDoc;
+  replyTo?: {
+    messageId: mongoose.Types.ObjectId;
+    senderName: string;
+    content: string;
+  };
   createdAt: Date;
   editedAt?: Date;
 }
@@ -92,6 +97,11 @@ const groupMessageSchema = new Schema<IGroupMessage>(
     content: { type: String },
     attachments: [attachmentSchema],
     poll: pollSchema,
+    replyTo: {
+      messageId: { type: Schema.Types.ObjectId, ref: 'GroupMessage' },
+      senderName: { type: String },
+      content: { type: String },
+    },
     editedAt: { type: Date },
   },
   { timestamps: true },
