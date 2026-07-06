@@ -19,7 +19,7 @@ export interface DMMessageData {
   senderId: { _id: string; name: string; avatarUrl?: string };
   content?: string;
   type: 'text' | 'file' | 'system';
-  attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'file' }[];
+  attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[];
   createdAt: string;
 }
 
@@ -44,7 +44,7 @@ export async function getDMMessages(
 export async function sendDMMessage(
   threadId: string, 
   content: string, 
-  attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'file' }[]
+  attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[]
 ): Promise<DMMessageData> {
   const { data } = await api.post(`/dms/${threadId}/messages`, { 
     content, 

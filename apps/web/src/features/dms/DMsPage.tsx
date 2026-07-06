@@ -10,7 +10,7 @@ import {
   type DMMessageData,
 } from '@/services/dm.service';
 import { createRoom } from '@/services/room.service';
-import { uploadFile } from '@/services/upload.service';
+import { uploadFile, formatFileSize } from '@/services/upload.service';
 import { useAuthStore } from '@/stores/authStore';
 import { connectSocket } from '@/services/socket';
 
@@ -28,6 +28,7 @@ export default function DMsPage() {
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [threadsPanelOpen, setThreadsPanelOpen] = useState(window.innerWidth >= 768 || !activeThreadId);
@@ -189,10 +190,20 @@ export default function DMsPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeThreadId || uploading) return;
+
+    // Validate that the file is either an image or a PDF
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isImage && !isPdf) {
+      alert('Only image and PDF files are supported in direct messages.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
       const result = await uploadFile(file, 'prepsync/dms');
-      const attachmentType = file.type.startsWith('image/') ? 'image' : 'file';
+      const attachmentType: 'image' | 'pdf' = isImage ? 'image' : 'pdf';
       
       const newMsg = await sendDMMessage(activeThreadId, `File Shared: ${file.name}`, [
         {
@@ -203,8 +214,9 @@ export default function DMsPage() {
         },
       ]);
       setMessages((prev) => [...prev, newMsg]);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('File upload/send failed:', err);
+      alert('Failed to send file. Please try again.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -360,22 +372,40 @@ export default function DMsPage() {
 
                         {/* File attachments */}
                         {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="mt-2 flex flex-col gap-1">
-                            {msg.attachments.map((att, idx) => (
-                              <a
-                                key={idx}
-                                href={att.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={clsx(
-                                  'flex items-center gap-2 p-2 rounded-md transition-colors text-sm font-sans',
-                                  isMe ? 'bg-black/20 hover:bg-black/30 text-white' : 'bg-bg-overlay hover:bg-bg-elevated text-text-primary'
-                                )}
-                              >
-                                <span>{att.type === 'image' ? '🖼️' : '📄'}</span>
-                                <span className="truncate">{att.filename}</span>
-                              </a>
-                            ))}
+                          <div className="mt-2 flex flex-col gap-2">
+                            {msg.attachments.map((att, idx) => {
+                              const isImage = att.type === 'image';
+                              return isImage ? (
+                                <div 
+                                  key={idx} 
+                                  className="dgp-media-image mt-1" 
+                                  onClick={() => setLightboxUrl(att.url)}
+                                >
+                                  <img src={att.url} alt={att.filename} loading="lazy" />
+                                </div>
+                              ) : (
+                                <a 
+                                  key={idx} 
+                                  href={att.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className={clsx('dgp-media-doc mt-1', isMe && 'dgp-media-doc--me')}
+                                >
+                                  <span className="dgp-doc-icon">📕</span>
+                                  <div className="dgp-doc-info text-left">
+                                    <p className="dgp-doc-name">{att.filename}</p>
+                                    <p className="dgp-doc-size">{formatFileSize(att.filesize)}</p>
+                                  </div>
+                                  <span className="dgp-doc-download">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                      <polyline points="7 10 12 15 17 10" />
+                                      <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                  </span>
+                                </a>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -401,7 +431,7 @@ export default function DMsPage() {
                   className="hidden"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  accept="image/*,.pdf"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -430,6 +460,13 @@ export default function DMsPage() {
           </>
         )}
       </div>
+      {/* ── Image Lightbox ── */}
+      {lightboxUrl && (
+        <div className="dgp-lightbox z-[100]" onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="Full size" />
+          <button className="dgp-lightbox-close">✕</button>
+        </div>
+      )}
     </div>
   );
 }
