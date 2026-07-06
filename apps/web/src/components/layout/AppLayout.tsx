@@ -76,11 +76,20 @@ export default function AppLayout() {
 
       fetchNotifications();
       const socket = connectSocket();
-      socket.emit('user:setup', { userId: user._id });
 
+      const onConnect = () => {
+        socket.emit('user:setup', { userId: user._id });
+      };
+
+      if (socket.connected) {
+        onConnect();
+      }
+
+      socket.on('connect', onConnect);
       const cleanSocket = initSocket(socket);
 
       return () => {
+        socket.off('connect', onConnect);
         cleanSocket();
         disconnectSocket();
       };

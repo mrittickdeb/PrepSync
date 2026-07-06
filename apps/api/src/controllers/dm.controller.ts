@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { DMThread, DMMessage } from '../models/DM';
-import { User } from '../models';
+import { User, Notification } from '../models';
 import { ApiError } from '../middleware/error';
 
 // ===== GET /dms — List user's DM threads =====
@@ -173,8 +173,26 @@ export async function sendMessage(
 
     try {
       const { getIO } = require('../socket/socketHandler');
+      
+      // Broadcast message to DM thread room
       getIO().to(`dm:${threadId}`).emit('dm:message', populated);
-    } catch {
+
+      // Create in-app notification for the recipient
+      const recipientId = thread.participants.find((p) => p.toString() !== user._id.toString());
+      if (recipientId) {
+        const senderName = user.name || 'Someone';
+        const dbNotification = await Notification.create({
+          userId: recipientId,
+          type: 'dm',
+          title: `New message from ${senderName}`,
+          body: content?.trim().slice(0, 80) || (type === 'file' ? '📎 File' : ''),
+          link: `/dms/${threadId}`,
+        });
+
+        // Emit real-time notification to the recipient
+        getIO().to(`user:${recipientId}`).emit('notification:new', dbNotification);
+      }
+    } catch (e) {
       // ignore socket emit error
     }
 

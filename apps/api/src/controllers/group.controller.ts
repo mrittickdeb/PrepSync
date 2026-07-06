@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import GroupMessage from '../models/GroupMessage';
 import { ApiError } from '../middleware/error';
+import { Notification } from '../models';
 
 const VALID_GROUPS = ['dsa', 'system-design', 'backend', 'conceptual', 'behavioural'];
 
@@ -151,8 +152,28 @@ export async function sendMessage(
 
     try {
       const { getIO } = require('../socket/socketHandler');
+      
+      // Broadcast message to group room
       getIO().to(`group:${id}`).emit('group:message', populated);
-    } catch {
+
+      // Create in-app notification if this is a reply to someone else's message
+      if (replyTo) {
+        const parentMsg = await GroupMessage.findById(replyTo.messageId).lean();
+        if (parentMsg && parentMsg.userId.toString() !== user._id.toString()) {
+          const senderName = user.name || 'Someone';
+          const dbNotification = await Notification.create({
+            userId: parentMsg.userId,
+            type: 'reply',
+            title: `New reply from ${senderName}`,
+            body: content?.trim().slice(0, 80) || (type === 'file' ? '📎 File' : ''),
+            link: `/groups/${id}`,
+          });
+
+          // Emit real-time notification to the replied user
+          getIO().to(`user:${parentMsg.userId}`).emit('notification:new', dbNotification);
+        }
+      }
+    } catch (e) {
       // ignore socket emit error
     }
 
