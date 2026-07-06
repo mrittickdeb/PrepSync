@@ -20,6 +20,7 @@ export interface DMMessageData {
   content?: string;
   type: 'text' | 'file' | 'system';
   attachments?: { url: string; filename: string; filesize: number; type: 'image' | 'pdf' }[];
+  readBy?: string[];
   createdAt: string;
 }
 

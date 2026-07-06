@@ -177,6 +177,22 @@ export function initSocketServer(httpServer: HttpServer): Server {
       });
     });
 
+    socket.on('dm:mark_read', async (data: { threadId: string; userId: string }) => {
+      try {
+        await DMMessage.updateMany(
+          { threadId: data.threadId, readBy: { $ne: data.userId } },
+          { $addToSet: { readBy: data.userId } }
+        );
+        
+        io.to(`dm:${data.threadId}`).emit('dm:read', {
+          threadId: data.threadId,
+          userId: data.userId,
+        });
+      } catch (err) {
+        console.error('Failed to mark DM as read via socket:', err);
+      }
+    });
+
     // ===== CODE EDITOR SYNC (Yjs awareness) =====
 
     socket.on('editor:join', (data: { roomId: string }) => {

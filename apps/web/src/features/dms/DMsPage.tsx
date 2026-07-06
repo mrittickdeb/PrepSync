@@ -34,15 +34,11 @@ export default function DMsPage() {
   const [threadsPanelOpen, setThreadsPanelOpen] = useState(window.innerWidth >= 768 || !activeThreadId);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<ReturnType<typeof connectSocket> | null>(null);
 
   useEffect(() => {
     fetchThreads();
     
-    // Auto-poll threads list every 4 seconds
-    const threadInterval = setInterval(() => {
-      fetchThreadsSilently();
-    }, 4000);
-
     function handleResize() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
@@ -51,7 +47,6 @@ export default function DMsPage() {
     window.addEventListener('resize', handleResize);
 
     return () => {
-      clearInterval(threadInterval);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
@@ -61,16 +56,15 @@ export default function DMsPage() {
 
     fetchMessages(activeThreadId);
 
-    // Auto-poll active thread messages every 3 seconds
-    const msgInterval = setInterval(() => {
-      fetchMessagesSilently(activeThreadId);
-    }, 3000);
-
     // Connect socket for instant real-time delivery
-    let socket: ReturnType<typeof connectSocket> | null = null;
     try {
-      socket = connectSocket();
+      const socket = connectSocket();
+      socketRef.current = socket;
       socket.emit('dm:join', { threadId: activeThreadId });
+      
+      if (user?._id) {
+        socket.emit('dm:mark_read', { threadId: activeThreadId, userId: user._id });
+      }
 
       socket.on('dm:message', (newMsg: DMMessageData) => {
         if (newMsg.threadId === activeThreadId) {
@@ -79,6 +73,21 @@ export default function DMsPage() {
             return [...prev, newMsg];
           });
           fetchThreadsSilently();
+          if (newMsg.senderId._id !== user?._id && user?._id) {
+            socket.emit('dm:mark_read', { threadId: activeThreadId, userId: user._id });
+          }
+        }
+      });
+      
+      socket.on('dm:read', (data: { threadId: string, userId: string }) => {
+        if (data.threadId === activeThreadId) {
+          setMessages((prev) => prev.map((m) => {
+            const readBy = m.readBy || [];
+            if (!readBy.includes(data.userId)) {
+               return { ...m, readBy: [...readBy, data.userId] };
+            }
+            return m;
+          }));
         }
       });
     } catch {
@@ -86,10 +95,10 @@ export default function DMsPage() {
     }
 
     return () => {
-      clearInterval(msgInterval);
-      if (socket) {
-        socket.emit('dm:leave', { threadId: activeThreadId });
-        socket.off('dm:message');
+      if (socketRef.current) {
+        socketRef.current.emit('dm:leave', { threadId: activeThreadId });
+        socketRef.current.off('dm:message');
+        socketRef.current.off('dm:read');
       }
     };
   }, [activeThreadId]);
@@ -123,6 +132,9 @@ export default function DMsPage() {
     try {
       const data = await getDMMessages(tId);
       setMessages(data.messages);
+      if (user?._id) {
+        socketRef.current?.emit('dm:mark_read', { threadId: tId, userId: user._id });
+      }
     } catch {
       setMessages([]);
     } finally {
@@ -343,32 +355,47 @@ export default function DMsPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+            <div className="dgp-messages flex-1">
               {loadingMessages ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                </div>
+                <div className="dgp-messages-empty"><div className="dgp-spinner" /></div>
               ) : messages.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-body text-text-muted font-sans">No messages yet. Say hello! 👋</p>
+                <div className="dgp-messages-empty">
+                  <div className="dgp-messages-empty-inner">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-text-muted)', marginBottom: 12 }}>
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <p className="dgp-empty-title">No messages yet. Say hello! 👋</p>
+                  </div>
                 </div>
               ) : (
                 messages.map((msg) => {
                   const isMe = msg.senderId?._id === user?._id;
                   return (
-                    <div
-                      key={msg._id}
-                      className={clsx('flex', isMe ? 'justify-end' : 'justify-start')}
-                    >
-                      <div
-                        className={clsx(
-                          'max-w-[85%] md:max-w-[70%] px-4 py-2.5 rounded-2xl',
-                          isMe
-                            ? 'bg-accent text-text-inverse rounded-br-md'
-                            : 'bg-bg-surface border border-border-subtle text-text-primary rounded-bl-md',
-                        )}
-                      >
-                        <p className="text-body font-sans whitespace-pre-wrap">{msg.content}</p>
+                    <div key={msg._id} className={clsx('dgp-msg', isMe && 'dgp-msg--me')}>
+                      {!isMe && (
+                        <div className="dgp-msg-avatar" style={{ backgroundColor: `#00D4FF15` }}>
+                          <span className="dgp-msg-avatar-letter" style={{ color: '#00D4FF' }}>
+                            {msg.senderId?.name?.charAt(0)?.toUpperCase() || '?'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
+                        <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
+                          <span className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me')}>
+                            {isMe ? 'You' : (msg.senderId?.name || 'Unknown')}
+                          </span>
+                          <span className="dgp-msg-time flex items-center gap-1">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {isMe && (
+                              <span className={clsx("flex tracking-tighter", (msg.readBy?.some(id => id !== user?._id)) ? 'text-[#00D4FF]' : 'text-text-muted')}>
+                                {(msg.readBy?.some(id => id !== user?._id)) ? '✓✓' : '✓'}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <p className={clsx('dgp-msg-text', isMe && 'dgp-msg-text--me')}>{msg.content}</p>
 
                         {/* File attachments */}
                         {msg.attachments && msg.attachments.length > 0 && (
@@ -408,13 +435,6 @@ export default function DMsPage() {
                             })}
                           </div>
                         )}
-
-                        <p className={clsx(
-                          'text-[10px] mt-1',
-                          isMe ? 'text-text-inverse/60' : 'text-text-muted',
-                        )}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
                       </div>
                     </div>
                   );
