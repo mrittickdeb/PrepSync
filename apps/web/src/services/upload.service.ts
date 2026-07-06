@@ -43,14 +43,17 @@ export function getResourceType(file: File): 'image' | 'video' | 'raw' | 'auto' 
   return 'auto';
 }
 
-// ===== Transform Cloudinary URL for proper file download =====
-
 export function getFileDownloadUrl(url: string, filename?: string): string {
   if (!url) return '';
   if (url.includes('cloudinary.com') && url.includes('/raw/upload/')) {
     if (!url.includes('/fl_attachment')) {
       const parts = url.split('/raw/upload/');
-      const cleanName = filename ? filename.replace(/[^a-zA-Z0-9_.-]/g, '_') : '';
+      let cleanName = '';
+      if (filename) {
+        const lastDot = filename.lastIndexOf('.');
+        const nameWithoutExt = lastDot !== -1 ? filename.slice(0, lastDot) : filename;
+        cleanName = nameWithoutExt.replace(/[^a-zA-Z0-9_-]/g, '_');
+      }
       const flag = cleanName ? `fl_attachment:${cleanName}` : 'fl_attachment';
       return `${parts[0]}/raw/upload/${flag}/${parts[1]}`;
     }
