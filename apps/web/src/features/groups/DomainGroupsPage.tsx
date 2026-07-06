@@ -777,25 +777,24 @@ export default function DomainGroupsPage() {
 
                           {/* System */}
                           {msg.type === 'system' && <p className="dgp-msg-system">{msg.content}</p>}
+
+                          {/* WhatsApp Hover Reply Button inside the body */}
+                          <button
+                            onClick={() => {
+                              const replyName = isMe ? 'You' : (msg.userId?.name || 'Unknown');
+                              const replyText = msg.content || (msg.type === 'voice' ? '🎵 Voice message' : '📎 File attachment');
+                              setReplyingTo({ messageId: msg._id, senderName: replyName, content: replyText });
+                            }}
+                            className={clsx('dgp-msg-reply-btn', isMe ? 'dgp-msg-reply-btn-right' : 'dgp-msg-reply-btn-left')}
+                            title="Reply"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="9 17 4 12 9 7" />
+                              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
-
-                      {/* WhatsApp Hover Reply Button */}
-                      <button
-                        onClick={() => {
-                          const replyName = isMe ? 'You' : (msg.userId?.name || 'Unknown');
-                          const replyText = msg.content || (msg.type === 'voice' ? '🎵 Voice message' : '📎 File attachment');
-                          setReplyingTo({ messageId: msg._id, senderName: replyName, content: replyText });
-                        }}
-                        className="dgp-msg-reply-btn"
-                        style={{ [isMe ? 'left' : 'right']: '-36px' }}
-                        title="Reply"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 17 4 12 9 7" />
-                          <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                        </svg>
-                      </button>
                     </div>
                   );
                 })
