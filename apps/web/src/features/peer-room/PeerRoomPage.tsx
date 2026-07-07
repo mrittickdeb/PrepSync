@@ -222,7 +222,7 @@ export default function PeerRoomPage() {
   // ===== CREATE VIEW =====
   if (view === 'create') {
     return (
-      <div className="min-h-[calc(100vh-48px)] bg-bg-base flex items-center justify-center">
+      <div className="min-h-[calc(100vh-64px)] bg-bg-base flex items-center justify-center">
         <div className="max-w-md w-full mx-auto px-6">
           <div className="text-center mb-8">
             <h1 className="text-display text-text-primary font-sans mb-2">Peer Interview Room</h1>
@@ -282,7 +282,7 @@ export default function PeerRoomPage() {
   // ===== LOBBY VIEW (waiting for partner) =====
   if (view === 'lobby') {
     return (
-      <div className="min-h-[calc(100vh-48px)] bg-bg-base flex items-center justify-center">
+      <div className="min-h-[calc(100vh-64px)] bg-bg-base flex items-center justify-center">
         <div className="max-w-md w-full mx-auto px-6 text-center">
           <div className="mb-8">
             <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
@@ -362,7 +362,7 @@ export default function PeerRoomPage() {
   // ===== ACTIVE VIEW (in session) =====
   if (view === 'active') {
     return (
-      <div className="h-[calc(100vh-48px)] bg-bg-base flex flex-col">
+      <div className="h-[calc(100vh-64px)] bg-bg-base flex flex-col">
         {/* Top Bar */}
         <div className="h-12 bg-bg-surface border-b border-border-subtle flex items-center justify-between px-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -397,9 +397,9 @@ export default function PeerRoomPage() {
         </div>
 
         {/* Main Area — Three panels */}
-        <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-y-auto md:overflow-hidden">
           {/* Left Panel — Video + Chat */}
-          <div className="w-[320px] bg-bg-surface border-r border-border-subtle flex flex-col shrink-0">
+          <div className="w-full md:w-[320px] bg-bg-surface border-b md:border-b-0 md:border-r border-border-subtle flex flex-col shrink-0 h-[380px] md:h-auto">
             {/* WebRTC Video */}
             <div className="p-3 border-b border-border-subtle">
               <VideoCall roomId={roomId} displayName={user?.name || 'User'} />
@@ -493,7 +493,7 @@ export default function PeerRoomPage() {
 
   // ===== ENDED VIEW =====
   return (
-    <div className="min-h-[calc(100vh-48px)] bg-bg-base flex items-center justify-center">
+    <div className="min-h-[calc(100vh-64px)] bg-bg-base flex items-center justify-center">
       <div className="max-w-md w-full mx-auto px-6 text-center">
         <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

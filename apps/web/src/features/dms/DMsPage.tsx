@@ -237,7 +237,7 @@ export default function DMsPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-48px)] flex relative overflow-hidden">
+    <div className="h-[calc(100vh-64px)] flex relative overflow-hidden">
       {/* Mobile Backdrop */}
       {isMobile && threadsPanelOpen && (
         <div 
