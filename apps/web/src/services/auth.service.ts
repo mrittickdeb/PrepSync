@@ -95,6 +95,7 @@ export async function getMe(): Promise<Record<string, unknown>> {
 }
 
 export async function getUserActivity(): Promise<Record<string, number>> {
-  const { data } = await api.get('/users/me/activity');
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const { data } = await api.get(`/users/me/activity?timezone=${encodeURIComponent(timezone)}`);
   return data;
 }

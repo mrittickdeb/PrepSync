@@ -64,6 +64,8 @@ export async function getActivity(
     const user = req.user;
     if (!user) throw ApiError.unauthorized();
 
+    const { timezone = 'UTC' } = req.query as { timezone?: string };
+
     const oneYearAgo = new Date();
     oneYearAgo.setDate(oneYearAgo.getDate() - 365);
 
@@ -78,7 +80,7 @@ export async function getActivity(
       },
       { 
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$startedAt" } },
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$startedAt", timezone } },
           count: { $sum: 1 }
         }
       }

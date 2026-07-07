@@ -21,11 +21,14 @@ export default function ActivityHeatmap({ data = {}, weeks = 52 }: ActivityHeatm
   const { grid, monthLabels, totalSessions, currentStreak } = useMemo(() => {
     const today = new Date();
     const totalDays = weeks * 7;
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - totalDays + 1);
-
-    // Align to Sunday
-    startDate.setDate(startDate.getDate() - startDate.getDay());
+    
+    // Align to Saturday of the current week (end of grid)
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + (6 - today.getDay()));
+    
+    // Compute start date as 52 weeks before the Saturday end date (which makes it a Sunday)
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - totalDays + 1);
 
     const grid: { date: string; count: number; day: number }[][] = [];
     const monthLabelsMap: { week: number; label: string }[] = [];
