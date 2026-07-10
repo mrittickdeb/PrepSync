@@ -18,6 +18,7 @@ import uploadRoutes from './routes/upload';
 import magicLinkRoutes from './routes/magicLink';
 import livekitRoutes from './routes/livekit';
 import notificationRoutes from './routes/notification';
+import socialRoutes from './routes/social';
 import passport from './config/passport';
 
 const app = express();
@@ -68,6 +69,7 @@ app.use(uploadRoutes);
 app.use(magicLinkRoutes);
 app.use(livekitRoutes);
 app.use(notificationRoutes);
+app.use(socialRoutes);
 
 // Error handling
 app.use(notFoundHandler);

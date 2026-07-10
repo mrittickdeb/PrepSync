@@ -30,6 +30,8 @@ export interface IUser extends Document {
   readinessIndex: ReadinessIndex;
   loginAttempts: number;
   lockUntil?: Date;
+  followers: mongoose.Types.ObjectId[];
+  following: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
   isLocked(): boolean;
@@ -98,6 +100,8 @@ const userSchema = new Schema<IUser>(
     readinessIndex: { type: readinessIndexSchema, default: () => ({}) },
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },
+    followers: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
+    following: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
   },
   {
     timestamps: true,
