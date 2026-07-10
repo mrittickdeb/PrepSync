@@ -20,6 +20,7 @@ import livekitRoutes from './routes/livekit';
 import notificationRoutes from './routes/notification';
 import socialRoutes from './routes/social';
 import videoRoutes from './routes/video';
+import communityRoutes from './routes/community';
 import passport from './config/passport';
 
 const app = express();
@@ -72,6 +73,7 @@ app.use(livekitRoutes);
 app.use(notificationRoutes);
 app.use(socialRoutes);
 app.use(videoRoutes);
+app.use(communityRoutes);
 
 // Error handling
 app.use(notFoundHandler);

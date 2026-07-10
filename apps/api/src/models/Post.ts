@@ -7,6 +7,7 @@ export interface IPost extends Document {
   likes: mongoose.Types.ObjectId[];
   reposts: mongoose.Types.ObjectId[];
   commentsCount: number;
+  community?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,7 @@ const postSchema = new Schema<IPost>(
     likes: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
     reposts: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
     commentsCount: { type: Number, default: 0 },
+    community: { type: Schema.Types.ObjectId, ref: 'Community', required: false, index: true },
   },
   { timestamps: true }
 );
