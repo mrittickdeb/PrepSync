@@ -20,6 +20,7 @@ const LIVEKIT_URL = import.meta.env.VITE_LIVEKIT_URL || 'wss://your-livekit-serv
 
 interface GroupCallProps {
   roomName: string;
+  onLeave?: () => void;
 }
 
 /* ─── Pin Context ─── */
@@ -411,7 +412,7 @@ function CallStage() {
 }
 
 /* ─── Main Component ─── */
-export default function GroupCall({ roomName }: GroupCallProps) {
+export default function GroupCall({ roomName, onLeave }: GroupCallProps) {
   const [token, setToken] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(true);
@@ -456,6 +457,9 @@ export default function GroupCall({ roomName }: GroupCallProps) {
         audio={true}
         token={token}
         serverUrl={LIVEKIT_URL}
+        onDisconnected={() => {
+          if (onLeave) onLeave();
+        }}
         options={{
           dynacast: true,
           adaptiveStream: true,

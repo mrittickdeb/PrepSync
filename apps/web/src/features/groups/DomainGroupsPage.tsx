@@ -706,7 +706,12 @@ export default function DomainGroupsPage() {
         {mainView === 'lounge' ? (
           <div className="dgp-content"><StudyLounge groupId={activeGroup} /></div>
         ) : mainView === 'call' ? (
-          <div className="dgp-content dgp-content--call"><GroupCall roomName={`group-${activeGroup}`} /></div>
+          <div className="dgp-content dgp-content--call">
+            <GroupCall 
+              roomName={`group-${activeGroup}`} 
+              onLeave={() => setMainView('chat')} 
+            />
+          </div>
         ) : (
           <>
             {/* Messages */}
