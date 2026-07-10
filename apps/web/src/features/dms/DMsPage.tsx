@@ -71,6 +71,17 @@ export default function DMsPage() {
         if (newMsg.threadId === activeThreadId) {
           setMessages((prev) => {
             if (prev.some((m) => m._id === newMsg._id)) return prev;
+            
+            // Deduplicate if we sent it and have an optimistic message in queue
+            if (newMsg.senderId._id === user?._id) {
+              const optIndex = prev.findIndex((m: any) => m.isOptimistic);
+              if (optIndex !== -1) {
+                const copy = [...prev];
+                copy[optIndex] = newMsg;
+                return copy;
+              }
+            }
+            
             return [...prev, newMsg];
           });
           fetchThreadsSilently();
@@ -156,18 +167,54 @@ export default function DMsPage() {
 
   const handleSend = useCallback(async () => {
     if (!messageInput.trim() || sending || !activeThreadId) return;
+
+    const text = messageInput.trim();
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      _id: tempId,
+      threadId: activeThreadId,
+      senderId: {
+        _id: user?._id || '',
+        name: user?.name || 'You',
+        avatarUrl: user?.avatarUrl,
+      },
+      content: text,
+      type: 'text' as const,
+      attachments: [],
+      readBy: [user?._id || ''],
+      replyTo: replyingTo ? {
+        messageId: replyingTo.messageId,
+        senderName: replyingTo.senderName,
+        content: replyingTo.content,
+      } : undefined,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    // Update UI immediately (Instant response)
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setMessageInput('');
+    setReplyingTo(null);
+
     setSending(true);
     try {
-      const newMsg = await sendDMMessage(activeThreadId, messageInput.trim(), undefined, replyingTo || undefined);
-      setMessages((prev) => [...prev, newMsg]);
-      setMessageInput('');
-      setReplyingTo(null);
+      const newMsg = await sendDMMessage(activeThreadId, text, undefined, replyingTo || undefined);
+      setMessages((prev) => prev.map((m) => m._id === tempId ? newMsg : m));
     } catch {
-      // ignore
+      // Restore input text if send failed
+      setMessages((prev) => prev.filter((m) => m._id !== tempId));
+      setMessageInput(text);
+      if (optimisticMsg.replyTo) {
+        setReplyingTo({
+          messageId: optimisticMsg.replyTo.messageId,
+          senderName: optimisticMsg.replyTo.senderName,
+          content: optimisticMsg.replyTo.content,
+        });
+      }
     } finally {
       setSending(false);
     }
-  }, [activeThreadId, messageInput, replyingTo, sending]);
+  }, [activeThreadId, messageInput, replyingTo, sending, user]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -386,7 +433,7 @@ export default function DMsPage() {
                           </div>
                         )}
                         
-                        <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
+                        <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me', (msg as any).isOptimistic && 'opacity-60')}>
                           <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
                             <span className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me')}>
                               {isMe ? 'You' : (msg.senderId?.name || 'Unknown')}
@@ -395,7 +442,7 @@ export default function DMsPage() {
                               {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               {isMe && (
                                 <span className={clsx("flex tracking-tighter", (msg.readBy?.some(id => id !== user?._id)) ? 'text-[#00D4FF]' : 'text-text-muted')}>
-                                  {(msg.readBy?.some(id => id !== user?._id)) ? '✓✓' : '✓'}
+                                  {(msg as any).isOptimistic ? '⏳' : (msg.readBy?.some(id => id !== user?._id)) ? '✓✓' : '✓'}
                                 </span>
                               )}
                             </span>

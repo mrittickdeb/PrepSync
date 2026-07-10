@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import healthRoutes from './routes/health';
@@ -20,6 +21,9 @@ import notificationRoutes from './routes/notification';
 import passport from './config/passport';
 
 const app = express();
+
+// Compress all responses
+app.use(compression());
 
 // Security middleware
 app.use(helmet());

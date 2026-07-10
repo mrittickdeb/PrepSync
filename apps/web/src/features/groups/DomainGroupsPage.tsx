@@ -160,6 +160,17 @@ export default function DomainGroupsPage() {
         if (newMsg.groupId === activeGroup) {
           setMessages((prev) => {
             if (prev.some((m) => m._id === newMsg._id)) return prev;
+
+            // Deduplicate if we sent it and have an optimistic message in queue
+            if (newMsg.userId?._id === user?._id) {
+              const optIndex = prev.findIndex((m: any) => m.isOptimistic);
+              if (optIndex !== -1) {
+                const copy = [...prev];
+                copy[optIndex] = newMsg;
+                return copy;
+              }
+            }
+
             return [...prev, newMsg];
           });
         }
@@ -260,18 +271,53 @@ export default function DomainGroupsPage() {
   // ── Send text message ──
   const handleSend = useCallback(async () => {
     if (!messageInput.trim() || sending) return;
+
+    const text = messageInput.trim();
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      _id: tempId,
+      groupId: activeGroup,
+      userId: {
+        _id: user?._id || '',
+        name: user?.name || 'You',
+        avatarUrl: user?.avatarUrl,
+      },
+      content: text,
+      type: 'text' as const,
+      attachments: [],
+      replyTo: replyingTo ? {
+        messageId: replyingTo.messageId,
+        senderName: replyingTo.senderName,
+        content: replyingTo.content,
+      } : undefined,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    // Update UI immediately (Instant response)
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setMessageInput('');
+    setReplyingTo(null);
+
     setSending(true);
     try {
-      const newMsg = await sendGroupMessage(activeGroup, messageInput.trim(), replyingTo || undefined);
-      setMessages((prev) => [...prev, newMsg]);
-      setMessageInput('');
-      setReplyingTo(null);
+      const newMsg = await sendGroupMessage(activeGroup, text, replyingTo || undefined);
+      setMessages((prev) => prev.map((m) => m._id === tempId ? newMsg : m));
     } catch {
-      // ignore
+      // Restore input text if send failed
+      setMessages((prev) => prev.filter((m) => m._id !== tempId));
+      setMessageInput(text);
+      if (optimisticMsg.replyTo) {
+        setReplyingTo({
+          messageId: optimisticMsg.replyTo.messageId,
+          senderName: optimisticMsg.replyTo.senderName,
+          content: optimisticMsg.replyTo.content,
+        });
+      }
     } finally {
       setSending(false);
     }
-  }, [activeGroup, messageInput, replyingTo, sending]);
+  }, [activeGroup, messageInput, replyingTo, sending, user]);
 
   // ── File picker ──
   const openFilePicker = (acceptType: string) => {
@@ -694,7 +740,7 @@ export default function DomainGroupsPage() {
                             </span>
                           </div>
                         )}
-                        <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me')}>
+                        <div className={clsx('dgp-msg-body', isMe && 'dgp-msg-body--me', (msg as any).isOptimistic && 'opacity-60')}>
                           <div className={clsx('dgp-msg-meta', isMe && 'dgp-msg-meta--me')}>
                             <span
                               className={clsx('dgp-msg-name', isMe && 'dgp-msg-name--me', !isMe && 'cursor-pointer hover:underline')}
@@ -716,7 +762,7 @@ export default function DomainGroupsPage() {
                               <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               {isMe && (
                                 <span className="flex tracking-tighter ml-0.5 text-text-muted">
-                                  ✓
+                                  {(msg as any).isOptimistic ? '⏳' : '✓'}
                                 </span>
                               )}
                             </span>
