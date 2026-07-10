@@ -226,6 +226,26 @@ export default function Sidebar({
         </ul>
       </nav>
 
+      {/* Explore Community Switcher */}
+      <div className={clsx('px-3 pb-2', collapsed && 'px-2')}>
+        <NavLink
+          to="/community/feed"
+          className={clsx(
+            'flex items-center gap-3 px-3 py-[10px] rounded-md text-caption font-sans border border-accent/20 hover:border-accent hover:bg-accent-dim text-accent transition-colors duration-150',
+            collapsed && 'justify-center px-0'
+          )}
+          title={collapsed ? "Explore Community" : undefined}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          {!collapsed && <span className="font-medium">Explore Community</span>}
+        </NavLink>
+      </div>
+
       {/* New Session CTA */}
       <div className={clsx('px-3 pb-4', collapsed && 'px-2')}>
         <Button

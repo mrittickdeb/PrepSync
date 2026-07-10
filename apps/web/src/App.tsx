@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout';
+import { AppLayout, CommunityLayout } from '@/components/layout';
 import { PageWrapper } from '@/components/layout';
 import { ToastProvider } from '@/components/ui';
 import {
@@ -19,6 +19,12 @@ import { DMsPage } from '@/features/dms';
 import { SessionHistoryPage } from '@/features/history';
 import { SettingsPage } from '@/features/settings';
 import AuthGuard from '@/components/guards/AuthGuard';
+
+// Community Features
+import SocialFeedPage from '@/features/feed/SocialFeedPage';
+import ExploreCommunitiesPage from '@/features/communities/ExploreCommunitiesPage';
+import VideoCatalogPage from '@/features/watch/VideoCatalogPage';
+import LiveStreamsPage from '@/features/stream/LiveStreamsPage';
 
 // Placeholder for protected pages — replaced as features are built
 function PlaceholderPage({ title }: { title: string }) {
@@ -133,6 +139,20 @@ export default function App() {
           <Route path="/dms/:threadId" element={<DMsPage />} />
           <Route path="/history" element={<SessionHistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+
+        {/* Community Hub routes (inside community layout + auth guard) */}
+        <Route
+          element={
+            <AuthGuard requireOnboarding>
+              <CommunityLayout />
+            </AuthGuard>
+          }
+        >
+          <Route path="/community/feed" element={<SocialFeedPage />} />
+          <Route path="/community/explore" element={<ExploreCommunitiesPage />} />
+          <Route path="/community/watch" element={<VideoCatalogPage />} />
+          <Route path="/community/live" element={<LiveStreamsPage />} />
         </Route>
 
         {/* Catch-all */}
