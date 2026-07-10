@@ -24,6 +24,7 @@ import AuthGuard from '@/components/guards/AuthGuard';
 import SocialFeedPage from '@/features/feed/SocialFeedPage';
 import ExploreCommunitiesPage from '@/features/communities/ExploreCommunitiesPage';
 import VideoCatalogPage from '@/features/watch/VideoCatalogPage';
+import VideoDetailPage from '@/features/watch/VideoDetailPage';
 import LiveStreamsPage from '@/features/stream/LiveStreamsPage';
 
 // Placeholder for protected pages — replaced as features are built
@@ -152,6 +153,7 @@ export default function App() {
           <Route path="/community/feed" element={<SocialFeedPage />} />
           <Route path="/community/explore" element={<ExploreCommunitiesPage />} />
           <Route path="/community/watch" element={<VideoCatalogPage />} />
+          <Route path="/community/watch/:videoId" element={<VideoDetailPage />} />
           <Route path="/community/live" element={<LiveStreamsPage />} />
         </Route>
 
