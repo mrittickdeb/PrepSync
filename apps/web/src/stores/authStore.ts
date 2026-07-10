@@ -43,10 +43,12 @@ interface AuthState {
   completeOnboarding: (goal: string, targetDomains: string[], weeklyGoal: number) => Promise<void>;
 }
 
+const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: hasToken,
   pendingUserId: null,
 
   setUser: (user) =>
@@ -96,8 +98,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     refreshPromise = (async () => {
       try {
         set({ isLoading: true });
+        
+        // 1. Try to fetch user profile directly using current access token
+        try {
+          const user = await authService.getMe();
+          set({
+            user: user as unknown as User,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return;
+        } catch {
+          // Token might be expired or missing, proceed to manual refresh
+        }
+
+        // 2. Refresh token manually using cookie
         await authService.refreshToken();
-        // After refresh, fetch user profile
         const user = await authService.getMe();
         set({
           user: user as unknown as User,

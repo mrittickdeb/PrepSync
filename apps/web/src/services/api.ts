@@ -56,6 +56,7 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (
+      originalRequest &&
       error.response?.status === 401 &&
       error.response?.data?.code === 'TOKEN_EXPIRED' &&
       !originalRequest._retry
@@ -85,7 +86,16 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processRefreshQueue(refreshError, null);
         setAccessToken(null);
-        window.location.href = '/login';
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname !== '/login' &&
+          window.location.pathname !== '/signup' &&
+          window.location.pathname !== '/forgot-password' &&
+          window.location.pathname !== '/reset-password' &&
+          window.location.pathname !== '/verify-email'
+        ) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

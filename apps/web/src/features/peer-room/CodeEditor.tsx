@@ -42,6 +42,7 @@ export default function CodeEditor({
   const user = useAuthStore((s) => s.user);
   const [language, setLanguage] = useState(initialLanguage);
   const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<YjsSocketProvider | null>(null);
   const bindingRef = useRef<MonacoBinding | null>(null);
@@ -66,7 +67,7 @@ export default function CodeEditor({
     const configMap = doc.getMap('config');
     const updateLocalLanguage = () => {
       const syncedLang = configMap.get('language') as string;
-      if (syncedLang && syncedLang !== language) {
+      if (syncedLang) {
         setLanguage(syncedLang);
       }
     };
@@ -80,8 +81,19 @@ export default function CodeEditor({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, user?.name]);
 
-  const handleEditorMount: OnMount = (editor) => {
+  // Dynamically update model language to prevent Monaco model recreation and keep Yjs binding alive
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current) {
+      const model = editorRef.current.getModel();
+      if (model) {
+        monacoRef.current.editor.setModelLanguage(model, language);
+      }
+    }
+  }, [language]);
+
+  const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     if (ydocRef.current && providerRef.current) {
       const type = ydocRef.current.getText('monaco');
@@ -91,6 +103,7 @@ export default function CodeEditor({
       const syncedLang = configMap.get('language') as string;
       if (syncedLang) {
         setLanguage(syncedLang);
+        monaco.editor.setModelLanguage(editor.getModel(), syncedLang);
       }
 
       const model = editor.getModel();
