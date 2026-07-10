@@ -17,6 +17,9 @@ export interface RoomDetails {
   inviteCode: string;
   status: 'waiting' | 'active' | 'ended';
   participants: RoomParticipant[];
+  code?: string;
+  codeLanguage?: string;
+  whiteboardState?: string;
   createdAt: string;
 }
 

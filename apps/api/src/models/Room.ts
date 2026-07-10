@@ -19,6 +19,9 @@ export interface IRoom extends Document {
   participants: ParticipantDoc[];
   status: RoomStatus;
   sessionId?: mongoose.Types.ObjectId;
+  code?: string;
+  codeLanguage?: string;
+  whiteboardState?: string;
   createdAt: Date;
   updatedAt: Date;
   endedAt?: Date;
@@ -56,6 +59,9 @@ const roomSchema = new Schema<IRoom>(
       enum: ['waiting', 'active', 'ended'],
     },
     sessionId: { type: Schema.Types.ObjectId, ref: 'Session' },
+    code: { type: String, default: '' },
+    codeLanguage: { type: String, default: 'javascript' },
+    whiteboardState: { type: String, default: '' },
     endedAt: { type: Date },
   },
   { timestamps: true },

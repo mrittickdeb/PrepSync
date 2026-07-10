@@ -43,6 +43,9 @@ export default function PeerRoomPage() {
   const [chatInput, setChatInput] = useState('');
   const [codeOutput, setCodeOutput] = useState<string | undefined>(undefined);
   const [isRunning, setIsRunning] = useState(false);
+  const [initialCode, setInitialCode] = useState('');
+  const [initialLanguage, setInitialLanguage] = useState('javascript');
+  const [initialWhiteboardState, setInitialWhiteboardState] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // If URL has an invite code, fetch room details
@@ -133,6 +136,9 @@ export default function PeerRoomPage() {
       setRoomId(room.roomId);
       setInviteCode(room.inviteCode);
       setParticipants(room.participants);
+      setInitialCode(room.code || '');
+      setInitialLanguage(room.codeLanguage || 'javascript');
+      setInitialWhiteboardState(room.whiteboardState || '');
 
       // Auto-join if not already in room
       const joinResult = await joinRoom(room.roomId);
@@ -479,10 +485,12 @@ export default function PeerRoomPage() {
                   onRunCode={handleRunCode}
                   isRunning={isRunning}
                   output={codeOutput}
+                  initialCode={initialCode}
+                  initialLanguage={initialLanguage}
                 />
               </div>
               <div className={clsx('absolute inset-0', activePanel === 'whiteboard' ? 'flex flex-col' : 'hidden')}>
-                <Whiteboard roomId={roomId} />
+                <Whiteboard roomId={roomId} initialState={initialWhiteboardState} />
               </div>
             </div>
           </div>

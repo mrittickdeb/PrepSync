@@ -13,6 +13,8 @@ interface CodeEditorProps {
   onRunCode?: (code: string, language: string) => void;
   isRunning?: boolean;
   output?: string;
+  initialCode?: string;
+  initialLanguage?: string;
 }
 
 const LANGUAGES = [
@@ -30,9 +32,15 @@ const LANGUAGES = [
 // Random bright colors for cursors
 const USER_COLORS = ['#30bced', '#6eeb83', '#ffbc42', '#ecd444', '#ee6352', '#9ac2c9', '#8acb88', '#1be7ff'];
 
-export default function CodeEditor({ roomId, onRunCode, isRunning, output }: CodeEditorProps) {
+export default function CodeEditor({ 
+  roomId, 
+  onRunCode, 
+  isRunning, 
+  output,
+  initialLanguage = 'javascript',
+}: CodeEditorProps) {
   const user = useAuthStore((s) => s.user);
-  const [language, setLanguage] = useState('javascript');
+  const [language, setLanguage] = useState(initialLanguage);
   const editorRef = useRef<any>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<YjsSocketProvider | null>(null);

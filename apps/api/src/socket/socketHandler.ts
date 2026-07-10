@@ -1,12 +1,67 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
+import * as Y from 'yjs';
 import { env } from '../config/env';
 import GroupMessage from '../models/GroupMessage';
 import { DMThread, DMMessage } from '../models/DM';
 import { User, Notification } from '../models';
+import Room from '../models/Room';
 import { sendDMNotification } from '../lib/email';
 
 let io: Server;
+
+const activeDocs = new Map<string, Y.Doc>();
+const saveTimers = new Map<string, NodeJS.Timeout>();
+
+function saveRoomCodeDebounced(roomId: string, doc: Y.Doc) {
+  if (saveTimers.has(roomId)) {
+    clearTimeout(saveTimers.get(roomId));
+  }
+
+  const timer = setTimeout(async () => {
+    saveTimers.delete(roomId);
+    try {
+      const text = doc.getText('monaco').toString();
+      const configMap = doc.getMap('config');
+      const language = (configMap.get('language') as string) || 'javascript';
+
+      await Room.findByIdAndUpdate(roomId, {
+        code: text,
+        codeLanguage: language,
+      });
+    } catch (err) {
+      console.error('[Socket] Failed to auto-save code:', err);
+    }
+  }, 3000);
+
+  saveTimers.set(roomId, timer);
+}
+
+const checkAndCleanupRoom = async (roomId: string) => {
+  const roomClients = io.sockets.adapter.rooms.get(`editor:${roomId}`);
+  if (!roomClients || roomClients.size === 0) {
+    const doc = activeDocs.get(roomId);
+    if (doc) {
+      activeDocs.delete(roomId);
+      if (saveTimers.has(roomId)) {
+        clearTimeout(saveTimers.get(roomId));
+        saveTimers.delete(roomId);
+      }
+      try {
+        const text = doc.getText('monaco').toString();
+        const configMap = doc.getMap('config');
+        const language = (configMap.get('language') as string) || 'javascript';
+        await Room.findByIdAndUpdate(roomId, {
+          code: text,
+          codeLanguage: language,
+        });
+      } catch (err) {
+        console.error('[Socket] Final code save failed:', err);
+      }
+      doc.destroy();
+    }
+  }
+};
 
 export function initSocketServer(httpServer: HttpServer): Server {
   const allowedOrigin = env.CLIENT_URL.endsWith('/') 
@@ -282,14 +337,47 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
     // ===== CODE EDITOR SYNC (Yjs awareness) =====
 
-    socket.on('editor:join', (data: { roomId: string }) => {
+    socket.on('editor:join', async (data: { roomId: string }) => {
       socket.join(`editor:${data.roomId}`);
+
+      let doc = activeDocs.get(data.roomId);
+      if (!doc) {
+        doc = new Y.Doc();
+        activeDocs.set(data.roomId, doc);
+
+        try {
+          const room = await Room.findById(data.roomId);
+          if (room && room.code) {
+            const type = doc.getText('monaco');
+            type.insert(0, room.code);
+            const configMap = doc.getMap('config');
+            configMap.set('language', room.codeLanguage || 'javascript');
+          }
+        } catch (err) {
+          console.error('[Socket] Failed to load code on editor:join:', err);
+        }
+      }
+
+      const update = Y.encodeStateAsUpdate(doc);
+      socket.emit('editor:update', {
+        update: Array.from(update),
+      });
     });
 
-    socket.on('editor:update', (data: { roomId: string; update: Uint8Array }) => {
+    socket.on('editor:update', (data: { roomId: string; update: number[] | Uint8Array }) => {
       socket.to(`editor:${data.roomId}`).emit('editor:update', {
         update: data.update,
       });
+
+      const doc = activeDocs.get(data.roomId);
+      if (doc) {
+        try {
+          Y.applyUpdate(doc, new Uint8Array(data.update));
+          saveRoomCodeDebounced(data.roomId, doc);
+        } catch (err) {
+          console.error('[Socket] Y.applyUpdate failed:', err);
+        }
+      }
     });
 
     socket.on('editor:awareness', (data: { roomId: string; state: any }) => {
@@ -305,16 +393,42 @@ export function initSocketServer(httpServer: HttpServer): Server {
       socket.join(`whiteboard:${data.roomId}`);
     });
 
-    socket.on('whiteboard:request-state', (data: { roomId: string }) => {
-      socket.to(`whiteboard:${data.roomId}`).emit('whiteboard:request-state', {
-        requesterId: socket.id,
-      });
+    socket.on('whiteboard:request-state', async (data: { roomId: string }) => {
+      const roomClients = io.sockets.adapter.rooms.get(`whiteboard:${data.roomId}`);
+      const otherClients = roomClients ? Array.from(roomClients).filter((id) => id !== socket.id) : [];
+
+      if (otherClients.length > 0) {
+        socket.to(`whiteboard:${data.roomId}`).emit('whiteboard:request-state', {
+          requesterId: socket.id,
+        });
+      } else {
+        try {
+          const room = await Room.findById(data.roomId);
+          if (room && room.whiteboardState) {
+            socket.emit('whiteboard:state', {
+              state: room.whiteboardState,
+            });
+          }
+        } catch (err) {
+          console.error('[Socket] Failed to load whiteboard state:', err);
+        }
+      }
     });
 
     socket.on('whiteboard:send-state', (data: { requesterId: string; state: string }) => {
       socket.to(data.requesterId).emit('whiteboard:state', {
         state: data.state,
       });
+    });
+
+    socket.on('whiteboard:save-state', async (data: { roomId: string; state: string }) => {
+      try {
+        await Room.findByIdAndUpdate(data.roomId, {
+          whiteboardState: data.state,
+        });
+      } catch (err) {
+        console.error('[Socket] Failed to save whiteboard state:', err);
+      }
     });
 
     socket.on('whiteboard:update', (data: { roomId: string; objects: any }) => {
@@ -324,6 +438,15 @@ export function initSocketServer(httpServer: HttpServer): Server {
     });
 
     // ===== DISCONNECT =====
+
+    socket.on('disconnecting', () => {
+      for (const roomName of socket.rooms) {
+        if (roomName.startsWith('editor:')) {
+          const roomId = roomName.slice(7);
+          setTimeout(() => checkAndCleanupRoom(roomId), 100);
+        }
+      }
+    });
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Client disconnected: ${socket.id}`);

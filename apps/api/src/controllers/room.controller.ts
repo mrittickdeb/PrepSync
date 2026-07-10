@@ -91,6 +91,9 @@ export async function getRoomByCode(
         role: p.role,
         isGuest: p.isGuest,
       })),
+      code: room.code || '',
+      codeLanguage: room.codeLanguage || 'javascript',
+      whiteboardState: room.whiteboardState || '',
       createdAt: room.createdAt,
     });
   } catch (error) {

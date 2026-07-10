@@ -2,7 +2,10 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { getSocket } from '@/services/socket';
 
-interface WhiteboardProps { roomId: string; }
+interface WhiteboardProps { 
+  roomId: string; 
+  initialState?: string;
+}
 interface Point { x: number; y: number; }
 type HistoryEntry = string;
 type Tool = 'select' | 'draw' | 'highlighter' | 'line' | 'arrow' | 'rectangle' | 'circle' | 'text' | 'eraser' | 'laser' | 'pan';
@@ -12,7 +15,7 @@ const SIZES = [2, 4, 6, 10];
 const BG_MODES = ['plain', 'grid', 'dots', 'lined'] as const;
 type BgMode = typeof BG_MODES[number];
 
-export default function Whiteboard({ roomId }: WhiteboardProps) {
+export default function Whiteboard({ roomId, initialState }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,12 +87,19 @@ export default function Whiteboard({ roomId }: WhiteboardProps) {
   const saveSnapshot = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    undoStack.current.push(canvas.toDataURL());
+    const dataURL = canvas.toDataURL();
+    undoStack.current.push(dataURL);
     if (undoStack.current.length > 50) undoStack.current.shift();
     redoStack.current = [];
     setCanUndo(true);
     setCanRedo(false);
-  }, []);
+
+    try {
+      getSocket().emit('whiteboard:save-state', { roomId, state: dataURL });
+    } catch (err) {
+      console.error('[Socket] Failed to save whiteboard state:', err);
+    }
+  }, [roomId]);
 
   const restoreImage = useCallback((dataUrl: string) => {
     const canvas = canvasRef.current;
@@ -240,7 +250,15 @@ export default function Whiteboard({ roomId }: WhiteboardProps) {
       overlay.width = w; overlay.height = h;
       if (ctx) {
         clearCanvas(ctx, w, h);
-        if (imageData) ctx.putImageData(imageData, 0, 0);
+        if (imageData) {
+          ctx.putImageData(imageData, 0, 0);
+        } else if (initialState && !initializedRef.current) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+          };
+          img.src = initialState;
+        }
         initializedRef.current = true;
       }
     };
