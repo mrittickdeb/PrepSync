@@ -69,7 +69,12 @@ SCORING GUIDE:
 - 60-79: Good — mostly correct, room for improvement
 - 80-100: Excellent — strong, comprehensive answer
 
-Be specific and actionable in feedback. Reference the actual transcript content.
+CRITICAL EVALUATION CRITERIA:
+1. TECHNICAL ACCURACY: Check the code syntax, logic, and correctness. If the candidate wrote buggy or incorrect code, grade 'correctness' and 'overallScore' strictly below 50.
+2. EDGE CASES: Actively look for whether the candidate identified and handled edge cases (e.g. empty inputs, null pointers, array bounds, duplicate values, extreme integers, negative inputs). If they completely ignored edge cases, penalize their 'edgeCaseHandling' score (below 40).
+3. COMPLEXITY ANALYSIS: Did they analyze time and space complexity (Big O) correctly? If they calculated it incorrectly or skipped it, dock their 'timeEfficiency' score.
+4. RIGOR: Be extremely strict and professional. Do not award high scores (60+) to brief, generic, or hand-waving answers. Reference specific portions of the transcript in "mistakesIdentified" and "improvementSuggestions".
+
 Respond with ONLY the JSON. No markdown fences, no explanation.`;
 
 const SUMMARISER_SYSTEM_PROMPT = `You are a session summariser for a technical interview practice platform.
@@ -148,6 +153,28 @@ export async function generateEvaluation(
   improvementSuggestions: string[];
   topicsToReview: string[];
 }> {
+  const userMessages = transcript.filter((t) => t.role === 'user');
+  const totalLength = userMessages.reduce((sum, m) => sum + (m.content?.trim()?.length || 0), 0);
+
+  // If user didn't send any message, or messages are extremely short (less than 15 chars total)
+  if (userMessages.length === 0 || totalLength < 15) {
+    return {
+      overallScore: 0,
+      dimensions: {
+        correctness: 0,
+        approachQuality: 0,
+        timeEfficiency: 0,
+        communicationClarity: 0,
+        problemDecomposition: 0,
+        edgeCaseHandling: 0,
+      },
+      mistakesIdentified: ['The interview session was ended early or had insufficient content to evaluate.'],
+      strongAnswerExample: 'Provide a structured, detailed response to the interviewer\'s questions to receive a full evaluation.',
+      improvementSuggestions: ['Complete the interview rounds with actual answers to get evaluated.'],
+      topicsToReview: [DOMAIN_LABELS[domain]],
+    };
+  }
+
   const formatted = formatTranscript(transcript);
 
   const response = await groq.chat.completions.create({

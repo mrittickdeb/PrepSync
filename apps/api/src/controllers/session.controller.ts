@@ -192,10 +192,12 @@ export async function endSession(
 
     await session.save();
 
-    // Update user's readiness index (async, don't block response)
-    updateReadinessIndex(user._id.toString(), session.domain as Domain, evaluation.overallScore).catch(
-      (err) => console.error('Failed to update readiness index:', err),
-    );
+    // Update user's readiness index (async, don't block response) - only if not aborted (score > 0)
+    if (evaluation.overallScore > 0) {
+      updateReadinessIndex(user._id.toString(), session.domain as Domain, evaluation.overallScore).catch(
+        (err) => console.error('Failed to update readiness index:', err),
+      );
+    }
 
     // Generate summary asynchronously (don't block response)
     generateSummary(transcriptForEval)
