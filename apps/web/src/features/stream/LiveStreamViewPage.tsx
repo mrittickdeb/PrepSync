@@ -189,14 +189,14 @@ export default function LiveStreamViewPage() {
         onDisconnected={() => setEnded(true)}
       >
         <RoomAudioRenderer />
-        <StreamContent isHost={!!isHost} streamTitle={stream.title} />
+        <StreamContent isHost={!!isHost} />
       </LiveKitRoom>
     </div>
   );
 }
 
 /* ─── Inner component: needs to be inside <LiveKitRoom> to use hooks ─── */
-function StreamContent({ isHost, streamTitle }: { isHost: boolean; streamTitle: string }) {
+function StreamContent({ isHost }: { isHost: boolean }) {
   const participants = useParticipants();
   const tracks = useTracks(
     [
