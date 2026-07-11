@@ -308,10 +308,6 @@ export async function refresh(
       throw ApiError.unauthorized('Invalid refresh token', 'INVALID_REFRESH_TOKEN');
     }
 
-    // Token rotation: remove old token
-    foundUser.refreshTokens.splice(foundTokenIndex, 1);
-
-    // Issue new tokens
     const accessToken = generateAccessToken({
       userId: String(foundUser._id),
       email: foundUser.email,
@@ -319,16 +315,54 @@ export async function refresh(
     const newRefreshToken = generateRefreshToken();
     const newRefreshHash = await hashToken(newRefreshToken);
 
-    foundUser.refreshTokens.push({
-      tokenHash: newRefreshHash,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      deviceInfo: req.headers['user-agent'] || 'unknown',
-      ipAddress: req.ip || 'unknown',
-      createdAt: new Date(),
-    });
+    // Save with retry loop to handle VersionErrors under high concurrency (e.g. concurrent follows/likes)
+    let retries = 3;
+    let finalUser = foundUser;
+    let tokenIndexToSplice = foundTokenIndex;
 
-    foundUser.lastActiveDate = new Date();
-    await foundUser.save();
+    while (retries > 0) {
+      try {
+        if (retries < 3) {
+          const freshUser = await User.findById(finalUser._id);
+          if (!freshUser) throw ApiError.unauthorized('User not found');
+          finalUser = freshUser;
+
+          tokenIndexToSplice = -1;
+          for (let i = 0; i < finalUser.refreshTokens.length; i++) {
+            const isMatch = await compareToken(oldRefreshToken, finalUser.refreshTokens[i].tokenHash);
+            if (isMatch) {
+              tokenIndexToSplice = i;
+              break;
+            }
+          }
+
+          if (tokenIndexToSplice === -1) {
+            throw ApiError.unauthorized('Invalid refresh token');
+          }
+        }
+
+        finalUser.refreshTokens.splice(tokenIndexToSplice, 1);
+        finalUser.refreshTokens.push({
+          tokenHash: newRefreshHash,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          deviceInfo: req.headers['user-agent'] || 'unknown',
+          ipAddress: req.ip || 'unknown',
+          createdAt: new Date(),
+        });
+
+        finalUser.lastActiveDate = new Date();
+        await finalUser.save();
+        break; // Successful save
+      } catch (err: any) {
+        if (err.name === 'VersionError') {
+          retries--;
+          if (retries === 0) throw err;
+          await new Promise((r) => setTimeout(r, 50)); // Small backoff
+        } else {
+          throw err;
+        }
+      }
+    }
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
@@ -354,14 +388,15 @@ export async function logout(
     const refreshToken = req.cookies?.refreshToken;
 
     if (refreshToken) {
-      // Find and remove the refresh token
+      // Find and atomically remove the refresh token
       const users = await User.find({});
       for (const user of users) {
-        for (let i = 0; i < user.refreshTokens.length; i++) {
-          const isMatch = await compareToken(refreshToken, user.refreshTokens[i].tokenHash);
+        for (const tokenObj of user.refreshTokens) {
+          const isMatch = await compareToken(refreshToken, tokenObj.tokenHash);
           if (isMatch) {
-            user.refreshTokens.splice(i, 1);
-            await user.save();
+            await User.findByIdAndUpdate(user._id, {
+              $pull: { refreshTokens: { tokenHash: tokenObj.tokenHash } }
+            });
             break;
           }
         }
