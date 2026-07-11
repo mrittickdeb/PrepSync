@@ -180,7 +180,7 @@ export const getRecommendedVideos = async (req: Request, res: Response) => {
     const { videoId } = req.params;
     const video = await Video.findById(videoId);
 
-    let recommendations;
+    let recommendations: any[] = [];
     if (video && video.tags.length > 0) {
       // Find videos with similar tags, excluding the current one
       recommendations = await Video.find({
