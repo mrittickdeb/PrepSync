@@ -27,6 +27,7 @@ import CommunityDetailPage from '@/features/communities/CommunityDetailPage';
 import VideoCatalogPage from '@/features/watch/VideoCatalogPage';
 import VideoDetailPage from '@/features/watch/VideoDetailPage';
 import LiveStreamsPage from '@/features/stream/LiveStreamsPage';
+import LiveStreamViewPage from '@/features/stream/LiveStreamViewPage';
 
 // Placeholder for protected pages — replaced as features are built
 function PlaceholderPage({ title }: { title: string }) {
@@ -157,6 +158,7 @@ export default function App() {
           <Route path="/community/watch" element={<VideoCatalogPage />} />
           <Route path="/community/watch/:videoId" element={<VideoDetailPage />} />
           <Route path="/community/live" element={<LiveStreamsPage />} />
+          <Route path="/community/live/:streamId" element={<LiveStreamViewPage />} />
         </Route>
 
         {/* Catch-all */}

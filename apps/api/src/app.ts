@@ -21,6 +21,7 @@ import notificationRoutes from './routes/notification';
 import socialRoutes from './routes/social';
 import videoRoutes from './routes/video';
 import communityRoutes from './routes/community';
+import streamRoutes from './routes/stream';
 import passport from './config/passport';
 
 const app = express();
@@ -74,6 +75,7 @@ app.use(notificationRoutes);
 app.use(socialRoutes);
 app.use(videoRoutes);
 app.use(communityRoutes);
+app.use(streamRoutes);
 
 // Error handling
 app.use(notFoundHandler);
