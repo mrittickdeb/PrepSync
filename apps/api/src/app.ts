@@ -26,6 +26,9 @@ import passport from './config/passport';
 
 const app = express();
 
+// Trust proxy (Render, Heroku, etc. reverse proxies)
+app.set('trust proxy', 1);
+
 // Compress all responses
 app.use(compression());
 

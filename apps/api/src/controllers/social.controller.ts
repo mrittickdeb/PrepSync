@@ -86,25 +86,34 @@ export const toggleLikePost = async (req: Request, res: Response) => {
     const userId = (req.user as any)?._id;
     const { postId } = req.params;
 
-    const post = await Post.findById(postId);
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // Try to remove the user from likes first
+    let post = await Post.findOneAndUpdate(
+      { _id: postId, likes: userIdObj },
+      { $pull: { likes: userIdObj } },
+      { new: true }
+    );
+
+    let isLiked = false;
+    if (!post) {
+      // If user wasn't in likes, add them
+      post = await Post.findByIdAndUpdate(
+        postId,
+        { $addToSet: { likes: userIdObj } },
+        { new: true }
+      );
+      isLiked = true;
+    }
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-    const likeIndex = post.likes.findIndex((id) => id.toString() === userId.toString());
-
-    if (likeIndex > -1) {
-      post.likes.splice(likeIndex, 1);
-    } else {
-      post.likes.push(userIdObj);
-    }
-
-    await post.save();
     return res.status(200).json({
       likes: post.likes,
       likesCount: post.likes.length,
-      isLiked: !(likeIndex > -1),
+      isLiked,
     });
   } catch (error: any) {
     console.error('Error toggling post like:', error);
@@ -118,24 +127,33 @@ export const toggleBookmark = async (req: Request, res: Response) => {
     const userId = (req.user as any)?._id;
     const { postId } = req.params;
 
-    const post = await Post.findById(postId);
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // Try to remove from bookmarks first
+    let post = await Post.findOneAndUpdate(
+      { _id: postId, bookmarks: userIdObj },
+      { $pull: { bookmarks: userIdObj } },
+      { new: true }
+    );
+
+    let isBookmarked = false;
+    if (!post) {
+      // If user wasn't bookmarked, add them
+      post = await Post.findByIdAndUpdate(
+        postId,
+        { $addToSet: { bookmarks: userIdObj } },
+        { new: true }
+      );
+      isBookmarked = true;
+    }
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-    const bmIndex = post.bookmarks.findIndex((id) => id.toString() === userId.toString());
-
-    if (bmIndex > -1) {
-      post.bookmarks.splice(bmIndex, 1);
-    } else {
-      post.bookmarks.push(userIdObj);
-    }
-
-    await post.save();
     return res.status(200).json({
       bookmarks: post.bookmarks,
-      isBookmarked: !(bmIndex > -1),
+      isBookmarked,
     });
   } catch (error: any) {
     console.error('Error toggling bookmark:', error);
@@ -165,25 +183,34 @@ export const toggleRepost = async (req: Request, res: Response) => {
     const userId = (req.user as any)?._id;
     const { postId } = req.params;
 
-    const post = await Post.findById(postId);
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // Try to remove from reposts first
+    let post = await Post.findOneAndUpdate(
+      { _id: postId, reposts: userIdObj },
+      { $pull: { reposts: userIdObj } },
+      { new: true }
+    );
+
+    let isReposted = false;
+    if (!post) {
+      // If user wasn't in reposts, add them
+      post = await Post.findByIdAndUpdate(
+        postId,
+        { $addToSet: { reposts: userIdObj } },
+        { new: true }
+      );
+      isReposted = true;
+    }
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-    const repostIndex = post.reposts.findIndex((id) => id.toString() === userId.toString());
-
-    if (repostIndex > -1) {
-      post.reposts.splice(repostIndex, 1);
-    } else {
-      post.reposts.push(userIdObj);
-    }
-
-    await post.save();
     return res.status(200).json({
       reposts: post.reposts,
       repostsCount: post.reposts.length,
-      isReposted: !(repostIndex > -1),
+      isReposted,
     });
   } catch (error: any) {
     console.error('Error toggling repost:', error);

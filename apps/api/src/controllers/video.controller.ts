@@ -93,30 +93,39 @@ export const toggleLikeVideo = async (req: Request, res: Response) => {
     const userId = (req.user as any)?._id;
     const { videoId } = req.params;
 
-    const video = await Video.findById(videoId);
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // Try to remove like first
+    let video = await Video.findOneAndUpdate(
+      { _id: videoId, likes: userIdObj },
+      { $pull: { likes: userIdObj } },
+      { new: true }
+    );
+
+    let isLiked = false;
+    if (!video) {
+      // If user wasn't in likes, add to likes and pull from dislikes
+      video = await Video.findByIdAndUpdate(
+        videoId,
+        {
+          $addToSet: { likes: userIdObj },
+          $pull: { dislikes: userIdObj },
+        },
+        { new: true }
+      );
+      isLiked = true;
+    }
+
     if (!video) {
       return res.status(404).json({ message: 'Video not found' });
     }
 
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-    const likeIndex = video.likes.findIndex((id) => id.toString() === userId.toString());
-
-    if (likeIndex > -1) {
-      video.likes.splice(likeIndex, 1);
-    } else {
-      video.likes.push(userIdObj);
-      // Remove from dislikes if present
-      const dislikeIdx = video.dislikes.findIndex((id) => id.toString() === userId.toString());
-      if (dislikeIdx > -1) video.dislikes.splice(dislikeIdx, 1);
-    }
-
-    await video.save();
     return res.status(200).json({
       likes: video.likes,
       dislikes: video.dislikes,
       likesCount: video.likes.length,
       dislikesCount: video.dislikes.length,
-      isLiked: !(likeIndex > -1),
+      isLiked,
     });
   } catch (error: any) {
     console.error('Error toggling video like:', error);
@@ -129,30 +138,39 @@ export const toggleDislikeVideo = async (req: Request, res: Response) => {
     const userId = (req.user as any)?._id;
     const { videoId } = req.params;
 
-    const video = await Video.findById(videoId);
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // Try to remove dislike first
+    let video = await Video.findOneAndUpdate(
+      { _id: videoId, dislikes: userIdObj },
+      { $pull: { dislikes: userIdObj } },
+      { new: true }
+    );
+
+    let isDisliked = false;
+    if (!video) {
+      // If user wasn't in dislikes, add to dislikes and pull from likes
+      video = await Video.findByIdAndUpdate(
+        videoId,
+        {
+          $addToSet: { dislikes: userIdObj },
+          $pull: { likes: userIdObj },
+        },
+        { new: true }
+      );
+      isDisliked = true;
+    }
+
     if (!video) {
       return res.status(404).json({ message: 'Video not found' });
     }
 
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-    const dislikeIdx = video.dislikes.findIndex((id) => id.toString() === userId.toString());
-
-    if (dislikeIdx > -1) {
-      video.dislikes.splice(dislikeIdx, 1);
-    } else {
-      video.dislikes.push(userIdObj);
-      // Remove from likes if present
-      const likeIdx = video.likes.findIndex((id) => id.toString() === userId.toString());
-      if (likeIdx > -1) video.likes.splice(likeIdx, 1);
-    }
-
-    await video.save();
     return res.status(200).json({
       likes: video.likes,
       dislikes: video.dislikes,
       likesCount: video.likes.length,
       dislikesCount: video.dislikes.length,
-      isDisliked: !(dislikeIdx > -1),
+      isDisliked,
     });
   } catch (error: any) {
     console.error('Error toggling dislike:', error);

@@ -4,7 +4,7 @@ import PageWrapper from '@/components/layout/PageWrapper';
 import Spinner from '@/components/ui/Spinner';
 import Avatar from '@/components/ui/Avatar';
 import { videoService, VideoInfo } from '@/services/video.service';
-import { uploadToCloudinary } from '@/services/upload.service';
+import { uploadToCloudinary, validateFile } from '@/services/upload.service';
 
 const TAG_OPTIONS = ['All', 'DSA', 'System Design', 'Backend', 'Frontend', 'Conceptual', 'Behavioural'];
 
@@ -301,7 +301,17 @@ export default function VideoCatalogPage() {
                   accept="video/mp4,video/webm,video/quicktime"
                   onChange={(e) => {
                     const files = e.target.files;
-                    if (files && files.length > 0) setUploadFile(files[0]);
+                    if (files && files.length > 0) {
+                      const file = files[0];
+                      const validationError = validateFile(file);
+                      if (validationError) {
+                        alert(validationError);
+                        e.target.value = '';
+                        setUploadFile(null);
+                        return;
+                      }
+                      setUploadFile(file);
+                    }
                   }}
                   className="text-caption text-text-secondary font-sans"
                   disabled={submittingVideo}
