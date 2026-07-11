@@ -9,8 +9,10 @@ export interface IVideo extends Document {
   author: mongoose.Types.ObjectId;
   views: number;
   likes: mongoose.Types.ObjectId[];
+  dislikes: mongoose.Types.ObjectId[];
   commentsCount: number;
   tags: string[];
+  category: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,15 +20,17 @@ export interface IVideo extends Document {
 const videoSchema = new Schema<IVideo>(
   {
     title: { type: String, required: true, maxlength: 100 },
-    description: { type: String, default: '', maxlength: 1000 },
+    description: { type: String, default: '', maxlength: 2000 },
     url: { type: String, required: true },
     thumbnailUrl: { type: String, default: '' },
     duration: { type: String, default: '00:00' },
     author: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     views: { type: Number, default: 0 },
     likes: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
+    dislikes: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
     commentsCount: { type: Number, default: 0 },
     tags: [{ type: String, default: [] }],
+    category: { type: String, default: 'General' },
   },
   { timestamps: true }
 );
